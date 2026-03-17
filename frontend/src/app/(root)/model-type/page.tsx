@@ -3,8 +3,10 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useDataset } from "@/app/lib/hooks/useDataset";
 
 export default function ModelTypePage() {
+  const { clearSession } = useDataset();
   const modelTypes = [
     {
       title: "Classification",
@@ -85,7 +87,7 @@ export default function ModelTypePage() {
                 whileHover={{ y: -15 }}
                 className="bg-gradient-to-b from-[var(--color-bg-secondary)] to-gray-800/50 rounded-2xl overflow-hidden shadow-xl border border-[var(--color-border)] transition-all duration-300 group"
               >
-                <Link href={model.href} className="block h-full">
+                <Link href={model.href} className="block h-full" onClick={() => clearSession()}>
                   <div className={`p-8 bg-gradient-to-r ${model.color} text-white relative overflow-hidden`}>
                     <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent"></div>
                     <div className="relative z-10 flex flex-col items-center">
