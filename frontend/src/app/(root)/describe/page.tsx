@@ -1,4 +1,4 @@
-// src/app/describe/page.tsx
+﻿// src/app/describe/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -6,17 +6,37 @@ import { useDataset } from "../../lib/hooks/useDataset";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-export default function DescribePage() {
-  const { datasetId, taskType } = useDataset();
-  const [description, setDescription] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
+const API_BASE = "http://localhost:8000/api";
 
-  const handleSubmit = () => {
-    // Mock: save description to backend
-    console.log("Description saved:", description);
-    // In real app: POST to /api/describe
-    window.location.href = '/analyze';
+export default function DescribePage() {
+  const { datasetId, taskType, description, setDescription } = useDataset();
+  const [isFocused, setIsFocused] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    try {
+      if (datasetId) {
+        await fetch(`${API_BASE}/describe/${datasetId}/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description }),
+        });
+      }
+    } catch {
+      // non-critical â€” continue even if save fails
+    } finally {
+      setSaving(false);
+      window.location.href = '/analyze';
+    }
   };
+
+  const examples = [
+    "Predict house prices based on features like location, size, and amenities",
+    "Classify customer churn based on purchase history and demographics",
+    "Cluster customers by spending behaviour for targeted marketing",
+    "Detect fraudulent transactions in financial records",
+  ];
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
@@ -31,15 +51,20 @@ export default function DescribePage() {
             Describe Your Dataset
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Help our AI understand your goal. This improves pipeline recommendations.
+            Help the system understand your goal. This improves pipeline recommendations.
           </p>
+          {taskType && (
+            <div className="mt-4 inline-flex items-center px-4 py-2 rounded-full bg-indigo-900/30 border border-indigo-500/30">
+              <span className="text-indigo-300 text-sm font-medium">Task: {taskType}</span>
+            </div>
+          )}
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="bg-gradient-to-br from-[var(--color-bg-secondary)] to-gray-800/50 rounded-2xl shadow-xl p-8 border border-[var(--color-border)]"
+          className="bg-gray-800/50 rounded-2xl shadow-xl p-8 border border-gray-700 mb-8"
         >
           <div className="mb-8">
             <label className="block text-lg font-medium text-white mb-4 flex items-center">
@@ -49,123 +74,63 @@ export default function DescribePage() {
               Goal Description
             </label>
             <div className={`relative rounded-xl border-2 transition-all duration-300 ${
-              isFocused
-                ? 'border-indigo-500 bg-indigo-900/10'
-                : 'border-[var(--color-border)] bg-[var(--color-bg)] hover:border-gray-600'
+              isFocused ? 'border-indigo-500 bg-indigo-900/10' : 'border-gray-600 bg-gray-900/50 hover:border-gray-500'
             }`}>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={e => setDescription(e.target.value.slice(0, 500))}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
-                placeholder="e.g., Predict customer churn based on purchase history, age, and demographics to improve retention strategies..."
-                className="w-full p-5 bg-transparent border-0 focus:ring-0 text-[var(--color-text)] placeholder-gray-500 resize-none min-h-[200px]"
+                placeholder="e.g., Predict customer churn based on purchase history, age, and demographics..."
+                className="w-full p-5 bg-transparent border-0 focus:ring-0 text-gray-200 placeholder-gray-500 resize-none min-h-[180px] outline-none"
               />
-              <div className="absolute bottom-3 right-3 text-xs text-gray-500">
-                {description.length}/500
-              </div>
+              <div className="absolute bottom-3 right-3 text-xs text-gray-500">{description.length}/500</div>
             </div>
           </div>
 
-          {/* Suggested Examples */}
+          {/* Suggested examples */}
           <div className="mb-8">
-            <h3 className="text-lg font-medium text-white mb-4 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Need inspiration? Try these examples:
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                "Predict house prices based on features like location, size, and amenities",
-                "Classify emails as spam or not spam based on content and sender",
-                "Forecast sales for next quarter based on historical data",
-                "Identify fraudulent transactions from banking records"
-              ].map((example, index) => (
-                <motion.div
-                  key={index}
-                  whileHover={{ scale: 1.02 }}
-                  className="p-4 bg-gray-800/50 rounded-lg border border-gray-700 cursor-pointer hover:border-indigo-500 transition-colors"
-                  onClick={() => setDescription(example)}
+            <h3 className="text-sm font-medium text-gray-400 mb-3">Need inspiration?</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {examples.map((ex, i) => (
+                <button
+                  key={i}
+                  onClick={() => setDescription(ex)}
+                  className="text-left px-4 py-3 rounded-lg bg-gray-700/50 border border-gray-600 text-gray-300 hover:border-indigo-500 hover:text-white transition-all duration-200 text-sm"
                 >
-                  <p className="text-gray-300 text-sm">{example}</p>
-                </motion.div>
+                  {ex}
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/upload" className="flex-1">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full px-6 py-4 bg-gray-800 text-gray-300 rounded-xl font-bold hover:bg-gray-700 transition-all duration-300 border border-gray-700"
+                className="w-full px-6 py-4 bg-gray-700 text-gray-300 rounded-xl font-bold hover:bg-gray-600 transition-all border border-gray-600 flex items-center justify-center"
               >
-                <div className="flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Back to Upload
-                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back
               </motion.button>
             </Link>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleSubmit}
-              disabled={!description.trim()}
-              className={`flex-1 px-6 py-4 rounded-xl font-bold text-white transition-all duration-300 shadow-lg ${
-                description.trim()
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 cursor-pointer'
-                  : 'bg-gray-700 cursor-not-allowed'
-              }`}
+              disabled={saving}
+              className="flex-1 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg flex items-center justify-center disabled:opacity-60"
             >
-              <div className="flex items-center justify-center">
-                Continue to Analysis
+              {saving ? 'Saving...' : 'Analyse Dataset'}
+              {!saving && (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
-              </div>
+              )}
             </motion.button>
-          </div>
-        </motion.div>
-
-        {/* Tips Section */}
-        <motion.div
-          className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-indigo-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-white mb-2">Be Specific</h3>
-            <p className="text-gray-400 text-sm">Detailed descriptions lead to better model recommendations.</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-indigo-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-white mb-2">Include Metrics</h3>
-            <p className="text-gray-400 text-sm">Mention specific metrics you care about (accuracy, precision, etc.).</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-indigo-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-white mb-2">Business Context</h3>
-            <p className="text-gray-400 text-sm">Explain the business problem you're trying to solve.</p>
           </div>
         </motion.div>
       </div>

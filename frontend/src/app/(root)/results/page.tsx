@@ -1,39 +1,50 @@
-// src/app/results/page.tsx
+﻿// src/app/results/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useDataset } from "../../lib/hooks/useDataset";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-export default function ResultsPage() {
-  const { datasetId, taskType, setJobStatus } = useDataset();
-  const [finalMetrics, setFinalMetrics] = useState<any>({});
+/** Determine an overall rating label from the primary metric */
+function getRating(taskType: string, metrics: Record<string, any>): string {
+  let score = 0;
+  if (taskType === 'classification') score = metrics.accuracy ?? 0;
+  else if (taskType === 'regression') score = Math.max(0, metrics.r2 ?? 0);
+  else score = Math.max(0, metrics.silhouette_score ?? 0);
+  if (score >= 0.9) return 'Excellent';
+  if (score >= 0.75) return 'Good';
+  if (score >= 0.5) return 'Fair';
+  return 'Needs Improvement';
+}
 
-  useEffect(() => {
-    setJobStatus('ready');
-    // Mock final metrics
-    setFinalMetrics({
-      accuracy: 0.91,
-      precision: 0.90,
-      recall: 0.92,
-      f1: 0.91,
-      confusion_matrix: [[85, 5], [3, 7]],
-      feature_importance: [
-        { feature: 'income', importance: 0.35 },
-        { feature: 'age', importance: 0.25 },
-        { feature: 'education', importance: 0.20 },
-        { feature: 'purchase_history', importance: 0.20 },
-      ],
-    });
-  }, []);
+export default function ResultsPage() {
+  const { taskType, trainingResult, setJobStatus } = useDataset();
+  useEffect(() => { setJobStatus('ready'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resolve metrics â€” use real data if available, otherwise show mock classification result
+  const effectiveTask = trainingResult?.task_type ?? taskType ?? 'classification';
+  const metrics: Record<string, any> = trainingResult?.metrics ?? {
+    accuracy: 0.91, precision: 0.90, recall: 0.92, f1: 0.91,
+    confusion_matrix: [[85, 5], [3, 7]],
+    feature_importance: [
+      { feature: 'income', importance: 0.35 },
+      { feature: 'age', importance: 0.25 },
+      { feature: 'education', importance: 0.20 },
+      { feature: 'purchase_history', importance: 0.20 },
+    ],
+  };
+
+  const isClassification = effectiveTask === 'classification';
+  const isRegression = effectiveTask === 'regression';
+  const isClustering = effectiveTask === 'clustering';
+  const rating = getRating(effectiveTask, metrics);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="text-center mb-12 mt-8"
         >
@@ -41,111 +52,183 @@ export default function ResultsPage() {
             Model Performance Report
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Your optimized model has achieved excellent results. Here's a detailed performance breakdown.
+            {trainingResult
+              ? `${trainingResult.algorithm} Â· ${effectiveTask} Â· ${metrics.n_samples ?? 'â€”'} samples`
+              : 'Here\'s a detailed breakdown of your model\'s performance.'}
           </p>
         </motion.div>
 
-        {/* Performance Summary */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="bg-gradient-to-br from-[var(--color-bg-secondary)] to-gray-800/50 rounded-2xl shadow-xl p-8 border border-[var(--color-border)] mb-8"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-emerald-900/20 to-emerald-900/10 p-6 rounded-xl border border-emerald-800/30 text-center">
-              <div className="text-4xl font-bold text-emerald-400 mb-2">{finalMetrics.accuracy?.toFixed(2)}</div>
-              <div className="text-gray-400">Accuracy</div>
-            </div>
-            <div className="bg-gradient-to-br from-cyan-900/20 to-cyan-900/10 p-6 rounded-xl border border-cyan-800/30 text-center">
-              <div className="text-4xl font-bold text-cyan-400 mb-2">{finalMetrics.precision?.toFixed(2)}</div>
-              <div className="text-gray-400">Precision</div>
-            </div>
-            <div className="bg-gradient-to-br from-indigo-900/20 to-indigo-900/10 p-6 rounded-xl border border-indigo-800/30 text-center">
-              <div className="text-4xl font-bold text-indigo-400 mb-2">{finalMetrics.recall?.toFixed(2)}</div>
-              <div className="text-gray-400">Recall</div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-900/20 to-purple-900/10 p-6 rounded-xl border border-purple-800/30 text-center">
-              <div className="text-4xl font-bold text-purple-400 mb-2">{finalMetrics.f1?.toFixed(2)}</div>
-              <div className="text-gray-400">F1-Score</div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Feature Importance */}
-            <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-[var(--color-border)]">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Feature Importance
-              </h3>
-              <div className="space-y-4">
-                {finalMetrics.feature_importance?.map((fi: any, i: number) => (
-                  <div key={i} className="bg-gray-800/50 p-3 rounded-lg">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-gray-300">{fi.feature}</span>
-                      <span className="text-emerald-400 font-bold">{fi.importance.toFixed(2)}</span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full"
-                        style={{ width: `${fi.importance * 100}%` }}
-                      ></div>
-                    </div>
+          {/* â”€â”€ Classification metrics â”€â”€ */}
+          {isClassification && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {[
+                  { label: 'Accuracy',  value: metrics.accuracy,  color: 'emerald' },
+                  { label: 'Precision', value: metrics.precision, color: 'cyan' },
+                  { label: 'Recall',    value: metrics.recall,    color: 'indigo' },
+                  { label: 'F1-Score',  value: metrics.f1,        color: 'purple' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className={`bg-gradient-to-br from-${color}-900/20 to-${color}-900/10 p-6 rounded-xl border border-${color}-800/30 text-center`}>
+                    <div className={`text-4xl font-bold text-${color}-400 mb-2`}>{value?.toFixed(2) ?? 'â€”'}</div>
+                    <div className="text-gray-400">{label}</div>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Confusion Matrix */}
-            <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-[var(--color-border)]">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Confusion Matrix
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-700">
-                  <thead>
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"></th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-cyan-400 uppercase tracking-wider">Predicted 0</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-cyan-400 uppercase tracking-wider">Predicted 1</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    <tr>
-                      <td className="px-4 py-2 text-sm font-medium text-gray-300">Actual 0</td>
-                      <td className="px-4 py-2 text-center text-sm font-bold text-emerald-400">{finalMetrics.confusion_matrix?.[0][0]}</td>
-                      <td className="px-4 py-2 text-center text-sm font-bold text-amber-400">{finalMetrics.confusion_matrix?.[0][1]}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2 text-sm font-medium text-gray-300">Actual 1</td>
-                      <td className="px-4 py-2 text-center text-sm font-bold text-amber-400">{finalMetrics.confusion_matrix?.[1][0]}</td>
-                      <td className="px-4 py-2 text-center text-sm font-bold text-emerald-400">{finalMetrics.confusion_matrix?.[1][1]}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 text-sm text-gray-400">
-                <p>True Positives: {finalMetrics.confusion_matrix?.[1][1]} | True Negatives: {finalMetrics.confusion_matrix?.[0][0]}</p>
-                <p>False Positives: {finalMetrics.confusion_matrix?.[0][1]} | False Negatives: {finalMetrics.confusion_matrix?.[1][0]}</p>
-              </div>
-            </div>
-          </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                {/* Feature Importance */}
+                {metrics.feature_importance?.length > 0 && (
+                  <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-[var(--color-border)]">
+                    <h3 className="text-xl font-bold text-white mb-4">Feature Importance</h3>
+                    <div className="space-y-3">
+                      {metrics.feature_importance.map((fi: any, i: number) => (
+                        <div key={i} className="bg-gray-800/50 p-3 rounded-lg">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-300 text-sm">{fi.feature}</span>
+                            <span className="text-emerald-400 font-bold text-sm">{(fi.importance * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full" style={{ width: `${fi.importance * 100}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-          {/* Model Performance Rating */}
+                {/* Confusion Matrix */}
+                {metrics.confusion_matrix && (
+                  <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-[var(--color-border)]">
+                    <h3 className="text-xl font-bold text-white mb-4">Confusion Matrix</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-700">
+                        <thead>
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400 uppercase"></th>
+                            {metrics.confusion_matrix[0].map((_: number, j: number) => (
+                              <th key={j} className="px-4 py-2 text-center text-xs font-medium text-cyan-400 uppercase">
+                                Pred {metrics.classes?.[j] ?? j}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-700">
+                          {metrics.confusion_matrix.map((row: number[], i: number) => (
+                            <tr key={i}>
+                              <td className="px-4 py-2 text-sm font-medium text-gray-300">Actual {metrics.classes?.[i] ?? i}</td>
+                              {row.map((val: number, j: number) => (
+                                <td key={j} className={`px-4 py-2 text-center text-sm font-bold ${i === j ? 'text-emerald-400' : 'text-amber-400'}`}>{val}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* â”€â”€ Regression metrics â”€â”€ */}
+          {isRegression && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {[
+                  { label: 'RÂ² Score', value: metrics.r2?.toFixed(4),   color: 'emerald' },
+                  { label: 'RMSE',     value: metrics.rmse?.toFixed(4),  color: 'cyan' },
+                  { label: 'MAE',      value: metrics.mae?.toFixed(4),   color: 'indigo' },
+                  { label: 'MSE',      value: metrics.mse?.toFixed(4),   color: 'purple' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className={`bg-gradient-to-br from-${color}-900/20 to-${color}-900/10 p-6 rounded-xl border border-${color}-800/30 text-center`}>
+                    <div className={`text-4xl font-bold text-${color}-400 mb-2`}>{value ?? 'â€”'}</div>
+                    <div className="text-gray-400">{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {metrics.feature_importance?.length > 0 && (
+                <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-[var(--color-border)] mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Feature Importance</h3>
+                  <div className="space-y-3">
+                    {metrics.feature_importance.map((fi: any, i: number) => (
+                      <div key={i} className="bg-gray-800/50 p-3 rounded-lg">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-gray-300 text-sm">{fi.feature}</span>
+                          <span className="text-emerald-400 font-bold text-sm">{(fi.importance * 100).toFixed(1)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full" style={{ width: `${fi.importance * 100}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* â”€â”€ Clustering metrics â”€â”€ */}
+          {isClustering && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {[
+                  { label: 'Clusters Found',    value: String(metrics.n_clusters ?? 'â€”'),     color: 'indigo' },
+                  { label: 'Silhouette Score',  value: metrics.silhouette_score?.toFixed(4) ?? 'N/A', color: 'emerald' },
+                  { label: metrics.inertia !== undefined ? 'Inertia' : metrics.bic !== undefined ? 'BIC' : 'Samples',
+                    value: (metrics.inertia ?? metrics.bic ?? metrics.n_samples)?.toFixed(2) ?? 'â€”', color: 'cyan' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className={`bg-gradient-to-br from-${color}-900/20 to-${color}-900/10 p-6 rounded-xl border border-${color}-800/30 text-center`}>
+                    <div className={`text-4xl font-bold text-${color}-400 mb-2`}>{value}</div>
+                    <div className="text-gray-400">{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {metrics.cluster_distribution && Object.keys(metrics.cluster_distribution).length > 0 && (
+                <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-[var(--color-border)] mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Cluster Distribution</h3>
+                  <div className="space-y-3">
+                    {Object.entries(metrics.cluster_distribution).map(([cluster, count]) => {
+                      const total = Object.values(metrics.cluster_distribution as Record<string, number>).reduce((a, b) => a + b, 0);
+                      const pct = ((count as number) / total) * 100;
+                      return (
+                        <div key={cluster} className="bg-gray-800/50 p-3 rounded-lg">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-300 text-sm">{parseInt(cluster) === -1 ? 'Noise' : `Cluster ${cluster}`}</span>
+                            <span className="text-indigo-400 font-bold text-sm">{count as number} pts ({pct.toFixed(1)}%)</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Rating */}
           <div className="bg-gradient-to-br from-emerald-900/10 to-cyan-900/10 p-6 rounded-xl border border-emerald-800/30 mb-8">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-white mb-2">Model Performance Rating</h3>
-                <p className="text-gray-400">Your model performs exceptionally well for production use</p>
+                <p className="text-gray-400">Based on all computed metrics</p>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-emerald-400">Excellent</div>
-                <div className="text-sm text-gray-400">Based on all metrics</div>
+                <div className={`text-3xl font-bold ${
+                  rating === 'Excellent' ? 'text-emerald-400' :
+                  rating === 'Good' ? 'text-cyan-400' :
+                  rating === 'Fair' ? 'text-amber-400' : 'text-red-400'
+                }`}>{rating}</div>
+                <div className="text-sm text-gray-400">{trainingResult?.algorithm ?? 'Model'}</div>
               </div>
             </div>
           </div>
@@ -154,8 +237,7 @@ export default function ResultsPage() {
           <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/optimize" className="flex-1">
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="w-full px-6 py-4 bg-gray-800 text-gray-300 rounded-xl font-bold hover:bg-gray-700 transition-all duration-300 border border-gray-700 flex items-center justify-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,8 +248,7 @@ export default function ResultsPage() {
             </Link>
             <Link href="/export">
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 className="w-full flex-1 px-6 py-4 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl font-bold hover:from-emerald-700 hover:to-cyan-700 transition-all duration-300 shadow-lg flex items-center justify-center"
               >
                 Export Model
@@ -182,39 +263,40 @@ export default function ResultsPage() {
         {/* Key Insights */}
         <motion.div
           className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-emerald-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+          {[
+            {
+              title: `${rating} Performance`,
+              body: isClassification
+                ? `Accuracy: ${(metrics.accuracy * 100).toFixed(1)}% on held-out test samples.`
+                : isRegression
+                ? `RÂ² of ${metrics.r2?.toFixed(3)} explains variance in predictions.`
+                : `Found ${metrics.n_clusters} clusters${metrics.silhouette_score ? ` with silhouette score ${metrics.silhouette_score.toFixed(3)}` : ''}.`,
+              icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+            },
+            {
+              title: 'Trained On Real Data',
+              body: `${metrics.n_samples ?? 'â€”'} samples Â· ${metrics.n_features ?? 'â€”'} features${metrics.target_column ? ` Â· target: "${metrics.target_column}"` : ''}.`,
+              icon: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4",
+            },
+            {
+              title: 'Ready to Export',
+              body: 'Download as .pkl for Python, .onnx for cross-platform deployment, or generate a runnable script.',
+              icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
+            },
+          ].map(({ title, body, icon }) => (
+            <div key={title} className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
+              <div className="w-10 h-10 rounded-lg bg-emerald-900/20 flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
+                </svg>
+              </div>
+              <h3 className="font-bold text-white mb-2">{title}</h3>
+              <p className="text-gray-400 text-sm">{body}</p>
             </div>
-            <h3 className="font-bold text-white mb-2">High Accuracy</h3>
-            <p className="text-gray-400 text-sm">Your model achieves 91% accuracy, suitable for production deployment.</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-emerald-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-white mb-2">Balanced Metrics</h3>
-            <p className="text-gray-400 text-sm">Precision and recall are well-balanced, indicating reliable predictions.</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-emerald-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="font-bold text-white mb-2">Production Ready</h3>
-            <p className="text-gray-400 text-sm">Model is ready for deployment with excellent performance metrics.</p>
-          </div>
+          ))}
         </motion.div>
       </div>
     </main>

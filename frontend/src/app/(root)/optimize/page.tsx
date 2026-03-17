@@ -1,4 +1,4 @@
-// src/app/optimize/page.tsx
+﻿// src/app/optimize/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,48 +6,73 @@ import { useDataset } from "../../lib/hooks/useDataset";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
+const API_BASE = "http://localhost:8000/api";
+
 export default function OptimizePage() {
-  const { datasetId, taskType, setJobStatus } = useDataset();
-  const [trials, setTrials] = useState<any[]>([]);
-  const [bestScore, setBestScore] = useState(0);
-  const [currentPhase, setCurrentPhase] = useState("Initializing optimization...");
-  const [progress, setProgress] = useState(0);
+  const { trainingResult, optimizationResult, setJobStatus, setOptimizationResult } = useDataset();
+  const [status, setStatus] = useState<"idle" | "running" | "done" | "error">(() => (optimizationResult ? "done" : "idle"));
+  const [progress, setProgress] = useState(() => (optimizationResult ? 100 : 0));
+  const [currentPhase, setCurrentPhase] = useState(() => (optimizationResult ? "Optimization complete!" : "Ready to optimize"));
+  const [trials, setTrials] = useState<any[]>(() => optimizationResult?.trials ?? []);
+  const [bestScore, setBestScore] = useState<number | null>(() => optimizationResult?.best_score ?? null);
+  const [bestParams, setBestParams] = useState<any>(() => optimizationResult?.best_params ?? null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const N_TRIALS = 20;
 
-  useEffect(() => {
-    setJobStatus('optimizing');
+  const runOptimization = async () => {
+    if (!trainingResult || trainingResult.job_id === 0) {
+      setErrorMsg("No real training job found. Please upload a dataset and train first.");
+      return;
+    }
+    setStatus("running");
+    setJobStatus("optimizing");
+    setTrials([]);
+    setBestScore(null);
+    setBestParams(null);
+    setErrorMsg(null);
+    setProgress(0);
+    setCurrentPhase("Submitting optimization job…");
 
-    let trialCount = 0;
-    const interval = setInterval(() => {
-      trialCount++;
+    try {
+      const res = await fetch(`${API_BASE}/optimize/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: trainingResult.job_id, n_trials: N_TRIALS }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? "Optimization failed");
 
-      if (trialCount > 10) {
-        clearInterval(interval);
-        setJobStatus('ready');
-        setBestScore(0.91);
-        setCurrentPhase("Optimization complete!");
-        setProgress(100);
-        return;
+      const result = data.result ?? data;
+      const trialList: any[] = result.trials ?? [];
+      const best: number = result.best_score ?? 0;
+      const params: any = result.best_params ?? {};
+
+      // Animate trials appearing
+      setCurrentPhase("Processing results…");
+      for (let i = 0; i < trialList.length; i++) {
+        await new Promise<void>(r => setTimeout(r, 60));
+        setTrials(prev => [...prev, trialList[i]]);
+        setProgress(Math.round(((i + 1) / trialList.length) * 100));
+        if (trialList[i].score > (bestScore ?? -Infinity)) {
+          setBestScore(trialList[i].score);
+        }
       }
 
-      const newTrial = {
-        id: trialCount,
-        score: Math.random() * 0.1 + 0.85, // 0.85–0.95
-        params: { max_depth: Math.floor(Math.random() * 10) + 1, n_estimators: 100 },
-        timestamp: new Date().toLocaleTimeString(),
-      };
+      setBestScore(best);
+      setBestParams(params);
+      setStatus("done");
+      setProgress(100);
+      setCurrentPhase("Optimization complete!");
+      setJobStatus("ready");
 
-      setTrials(prev => [...prev, newTrial]);
-      if (newTrial.score > bestScore) {
-        setBestScore(newTrial.score);
-      }
-
-      // Update progress and phase
-      setProgress((trialCount / 10) * 100);
-      setCurrentPhase(`Testing hyperparameters (${trialCount}/10)`);
-    }, 1500);
-
-    return () => clearInterval(interval);
-  }, [bestScore]);
+      const optimResult = { best_score: best, best_params: params, n_trials: result.n_trials ?? trialList.length, trials: trialList };
+      setOptimizationResult(optimResult);
+    } catch (err: any) {
+      setStatus("error");
+      setErrorMsg(err.message ?? "Unknown error");
+      setJobStatus("error");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
@@ -62,214 +87,181 @@ export default function OptimizePage() {
             Hyperparameter Optimization
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            We’re using Bayesian Optimization to find the best hyperparameters for your model.
+            Use Optuna to find the best hyperparameters for your trained model.
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="bg-gradient-to-br from-[var(--color-bg-secondary)] to-gray-800/50 rounded-2xl shadow-xl p-8 border border-[var(--color-border)] mb-8"
-        >
-          {/* Progress Visualization */}
-          <div className="mb-10">
-            <div className="flex justify-between mb-2">
-              <span className="text-sm font-medium text-amber-400">Optimization Progress</span>
-              <span className="text-sm font-medium text-gray-400">{Math.round(progress)}%</span>
-            </div>
-
-            <div className="relative h-6 bg-gray-800 rounded-full overflow-hidden mb-6">
-              <motion.div
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-600 to-orange-600"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.3 }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-bold text-white">
-                  {Math.round(progress)}%
-                </span>
+        {/* Status card */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Job</div>
+              <div className="text-white font-mono text-lg">
+                {trainingResult == null
+                  ? "No trained model"
+                  : trainingResult.job_id > 0
+                  ? `#${trainingResult.job_id}`
+                  : "Demo run"}
               </div>
             </div>
-
-            <div className="text-center text-lg font-medium text-gray-300 mb-8">
-              {currentPhase}
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Algorithm</div>
+              <div className="text-indigo-300 font-medium">{trainingResult?.algorithm ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Trials</div>
+              <div className="text-amber-300 font-medium">{N_TRIALS} trials</div>
+            </div>
+            <div>
+              <div className="text-gray-400 text-sm mb-1">Status</div>
+              <div className={`font-bold ${
+                status === "done" ? "text-emerald-400" :
+                status === "running" ? "text-amber-400 animate-pulse" :
+                status === "error" ? "text-red-400" : "text-gray-400"
+              }`}>
+                {status === "done" ? "✓ Complete" :
+                 status === "running" ? "Running…" :
+                 status === "error" ? "Error" : "Idle"}
+              </div>
             </div>
           </div>
 
-          {/* Optimization Visualization */}
-          <div className="flex justify-center mb-10">
-            <div className="relative">
-              <div className="w-48 h-48 rounded-full border-4 border-amber-900/30 flex items-center justify-center">
-                <div className="w-40 h-40 rounded-full border-4 border-orange-900/30 flex items-center justify-center">
-                  <div className="w-32 h-32 rounded-full border-4 border-amber-700/30 flex items-center justify-center">
-                    <motion.div
-                      className="w-24 h-24 rounded-full bg-gradient-to-r from-amber-600 to-orange-600 flex items-center justify-center"
-                      animate={{
-                        rotate: [0, 360],
-                        scale: [1, 1.1, 1]
-                      }}
-                      transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "linear",
-                        scale: {
-                          duration: 1,
-                          repeat: Infinity,
-                          repeatType: "reverse"
-                        }
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </motion.div>
-                  </div>
-                </div>
+          {/* Progress bar */}
+          {(status === "running" || status === "done") && (
+            <div className="mt-6">
+              <div className="flex justify-between text-sm text-gray-400 mb-2">
+                <span>{currentPhase}</span>
+                <span>{progress}%</span>
               </div>
-
-              {/* Floating elements */}
-              {[...Array(6)].map((_, i) => (
+              <div className="w-full bg-gray-700 rounded-full h-3">
                 <motion.div
-                  key={i}
-                  className="absolute w-3 h-3 rounded-full bg-amber-500"
-                  animate={{
-                    x: [0, Math.sin(i * 60 * Math.PI / 180) * 70],
-                    y: [0, Math.cos(i * 60 * Math.PI / 180) * 70],
-                    opacity: [0.5, 1, 0.5],
-                  }}
-                  transition={{
-                    duration: 2.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: i * 0.15,
-                  }}
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 h-3 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.3 }}
                 />
-              ))}
-            </div>
-          </div>
-
-          {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-amber-900/20 to-orange-900/20 p-6 rounded-xl border border-amber-800/30">
-              <div className="text-3xl font-bold text-amber-400 mb-2">{trials.length}/10</div>
-              <div className="text-gray-400">Trials Completed</div>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-900/20 to-green-900/20 p-6 rounded-xl border border-emerald-800/30">
-              <div className="text-3xl font-bold text-emerald-400 mb-2">{bestScore.toFixed(2)}</div>
-              <div className="text-gray-400">Best Score</div>
-            </div>
-            <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 p-6 rounded-xl border border-indigo-800/30">
-              <div className="text-3xl font-bold text-indigo-400 mb-2">{trials.length > 0 ? Math.max(...trials.map(t => t.score)).toFixed(2) : '0.00'}</div>
-              <div className="text-gray-400">Current Best</div>
-            </div>
-          </div>
-
-          {/* Recent Trials */}
-          {trials.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Recent Trials
-              </h3>
-              <div className="space-y-4">
-                {trials.slice(-3).reverse().map((trial) => (
-                  <motion.div
-                    key={trial.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="bg-gradient-to-r from-gray-800/50 to-gray-900/50 p-4 rounded-xl border border-gray-700 flex justify-between items-center"
-                  >
-                    <div>
-                      <div className="font-medium text-white">Trial #{trial.id}</div>
-                      <div className="text-sm text-gray-400">{trial.timestamp}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-amber-400">{trial.score.toFixed(2)}</div>
-                      <div className="text-xs text-gray-400">Score</div>
-                    </div>
-                  </motion.div>
-                ))}
               </div>
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link href="/train" className="flex-1">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full px-6 py-4 bg-gray-800 text-gray-300 rounded-xl font-bold hover:bg-gray-700 transition-all duration-300 border border-gray-700 flex items-center justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to Training
-              </motion.button>
-            </Link>
-            <Link href="/results">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={trials.length < 10}
-                className={`w-full flex-1 px-6 py-4 rounded-xl font-bold text-white transition-all duration-300 shadow-lg ${
-                  trials.length >= 10
-                    ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 cursor-pointer'
-                    : 'bg-gray-700 cursor-not-allowed'
-                } flex items-center justify-center`}
-              >
-                View Final Results
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </motion.button>
-            </Link>
-          </div>
+          {/* Error */}
+          {status === "error" && errorMsg && (
+            <div className="mt-4 p-4 bg-red-900/20 border border-red-700 rounded-xl text-red-400 text-sm">{errorMsg}</div>
+          )}
+
+          {/* Demo-run notice */}
+          {trainingResult != null && trainingResult.job_id === 0 && status !== "running" && status !== "done" && (
+            <div className="mt-4 p-4 bg-amber-900/20 border border-amber-700/40 rounded-xl text-amber-300 text-sm">
+              ⚠️ Optimization requires a real uploaded dataset. The current result is from a demo run — please upload a CSV on the Upload page and re-train.
+            </div>
+          )}
         </motion.div>
 
-        {/* Optimization Insights */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-amber-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+        {/* Best result summary */}
+        {status === "done" && bestScore !== null && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-emerald-900/20 border border-emerald-800/40 rounded-2xl p-6 text-center">
+              <div className="text-gray-400 text-sm mb-2">Best Score</div>
+              <div className="text-5xl font-bold text-emerald-400">{bestScore.toFixed(4)}</div>
             </div>
-            <h3 className="font-bold text-white mb-2">Bayesian Optimization</h3>
-            <p className="text-gray-400 text-sm">Advanced algorithm finds optimal hyperparameters efficiently.</p>
-          </div>
+            <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6">
+              <div className="text-gray-400 text-sm mb-3">Best Parameters</div>
+              {bestParams && Object.keys(bestParams).length > 0 ? (
+                <div className="space-y-2">
+                  {Object.entries(bestParams).map(([k, v]: [string, any]) => (
+                    <div key={k} className="flex justify-between text-sm">
+                      <span className="text-gray-300 font-mono">{k}</span>
+                      <span className="text-amber-300 font-mono">{String(v)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">No parameters found.</p>
+              )}
+            </div>
+          </motion.div>
+        )}
 
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-amber-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
+        {/* Trials table */}
+        {trials.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-6">
+            <h3 className="text-lg font-bold text-white mb-4">
+              Trial Results  <span className="text-gray-400 font-normal text-sm">({trials.length} / {N_TRIALS})</span>
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-400 border-b border-gray-700">
+                    <th className="text-left py-2 pr-4">Trial</th>
+                    <th className="text-left py-2 pr-4">Score</th>
+                    <th className="text-left py-2">Key Parameters</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...trials].reverse().slice(0, 15).map((t: any) => (
+                    <tr key={t.id} className="border-b border-gray-700/50 hover:bg-gray-700/20">
+                      <td className="py-2 pr-4 text-gray-300">#{t.id}</td>
+                      <td className={`py-2 pr-4 font-mono font-bold ${t.score === bestScore ? "text-emerald-400" : "text-amber-300"}`}>
+                        {typeof t.score === "number" ? t.score.toFixed(4) : t.score}
+                      </td>
+                      <td className="py-2 text-gray-400 font-mono text-xs">
+                        {t.params ? Object.entries(t.params).slice(0, 3).map(([k, v]) => `${k}=${v}`).join("  ") : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <h3 className="font-bold text-white mb-2">Performance Tracking</h3>
-            <p className="text-gray-400 text-sm">Real-time monitoring of optimization progress.</p>
-          </div>
+          </motion.div>
+        )}
 
-          <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-6 rounded-xl border border-gray-700">
-            <div className="w-10 h-10 rounded-lg bg-amber-900/20 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        {/* Action buttons */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Link href="/train" className="flex-1">
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              className="w-full px-6 py-4 bg-gray-700 text-gray-300 rounded-xl font-bold hover:bg-gray-600 transition-all border border-gray-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-            </div>
-            <h3 className="font-bold text-white mb-2">Model Improvement</h3>
-            <p className="text-gray-400 text-sm">Fine-tuning parameters for maximum model performance.</p>
-          </div>
-        </motion.div>
+              Back to Train
+            </motion.button>
+          </Link>
+
+          {status !== "done" && (
+            <motion.button
+              whileHover={{ scale: status === "running" ? 1 : 1.02 }}
+              whileTap={{ scale: status === "running" ? 1 : 0.98 }}
+              onClick={runOptimization}
+              disabled={status === "running" || !trainingResult || trainingResult.job_id === 0}
+              className={`flex-1 px-6 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center ${
+                status === "running" || !trainingResult || trainingResult.job_id === 0
+                  ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                  : "bg-gradient-to-r from-amber-600 to-orange-600 text-white hover:from-amber-700 hover:to-orange-700 shadow-lg"
+              }`}
+            >
+              {status === "running" ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white mr-3" />
+                  Optimizing…
+                </>
+              ) : (
+                "Start Optimization"
+              )}
+            </motion.button>
+          )}
+
+          {status === "done" && (
+            <Link href="/results" className="flex-1">
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                className="w-full px-6 py-4 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white rounded-xl font-bold text-lg hover:from-emerald-700 hover:to-cyan-700 transition-all shadow-lg flex items-center justify-center">
+                View Results →
+              </motion.button>
+            </Link>
+          )}
+        </div>
       </div>
     </main>
   );
