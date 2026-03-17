@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+
+# Media / ML model files (too large for GitHub)
+media/models/
+media/datasets/
+*.pkl
+*.onnx
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.env*.local
+
+# OS
+.DS_Store
+Thumbs.db
