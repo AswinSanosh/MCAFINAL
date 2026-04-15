@@ -4,9 +4,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDataset } from "../../lib/hooks/useDataset";
 import { motion } from "framer-motion";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 import Link from "next/link";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
 
 type ColInfo = { name: string; dtype: string };
 
@@ -69,9 +70,10 @@ export default function SelectColumnsPage() {
   // Toggle a feature column on/off
   const toggleColumn = (name: string) => {
     if (name === targetColumn) return; // can't deselect the target via this
-    setSelectedColumns(prev =>
-      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
-    );
+    const newColumns = selectedColumns.includes(name)
+      ? selectedColumns.filter(c => c !== name)
+      : [...selectedColumns, name];
+    setSelectedColumns(newColumns);
   };
 
   // Set or clear target column
@@ -79,11 +81,9 @@ export default function SelectColumnsPage() {
     const prev = targetColumn;
     setTargetColumn(name);
     // Add old target back to features, remove new target from features
-    setSelectedColumns(fc => {
-      let next = fc.filter(c => c !== name);
-      if (prev && prev !== name && !next.includes(prev)) next = [...next, prev];
-      return next;
-    });
+    let next = selectedColumns.filter(c => c !== name);
+    if (prev && prev !== name && !next.includes(prev)) next = [...next, prev];
+    setSelectedColumns(next);
   };
 
   const selectAll = () =>
@@ -97,8 +97,7 @@ export default function SelectColumnsPage() {
     // Save target_column to backend (PATCH)
     if (!isClustering && targetColumn) {
       try {
-        await fetch(`${API_BASE}/columns/${datasetId}/`, {
-          method: "PATCH",
+        await fetch(`${API_BASE}/columns/${datasetId}/`, { credentials: 'include', method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ target_column: targetColumn }),
         });
@@ -115,12 +114,14 @@ export default function SelectColumnsPage() {
 
   if (loading) {
     return (
+    <ProtectedRoute>
       <main className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-indigo-500 mx-auto mb-4" />
           <p className="text-indigo-400 text-lg">Loading columns…</p>
         </div>
       </main>
+    </ProtectedRoute>
     );
   }
 

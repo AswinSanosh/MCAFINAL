@@ -3,16 +3,19 @@
 
 import { useEffect, useState } from "react";
 import { useDataset } from "../../lib/hooks/useDataset";
+import { apiFetch } from "../../lib/auth";
 import { motion } from "framer-motion";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 import Link from "next/link";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
 
 export default function AnalyzePage() {
-  const { datasetId, taskType, setJobStatus, selectedColumns, targetColumn } = useDataset();
+  const { datasetId, taskType, setJobStatus, selectedColumns, targetColumn, clearSession } = useDataset();
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isStale, setIsStale] = useState(false);
 
   useEffect(() => {
     if (!datasetId) {
@@ -20,8 +23,14 @@ export default function AnalyzePage() {
       return;
     }
     setJobStatus("analyzing");
-    fetch(`${API_BASE}/analyze/${datasetId}/`)
-      .then(r => r.json())
+    apiFetch(`${API_BASE}/analyze/${datasetId}/`)
+      .then(r => {
+        if (r.status === 404) {
+          setIsStale(true);
+          throw new Error("Dataset not found — your session may be outdated.");
+        }
+        return r.json();
+      })
       .then(data => {
         if (data.error) throw new Error(data.error);
         setAnalysis(data);
@@ -36,6 +45,7 @@ export default function AnalyzePage() {
 
   if (loading) {
     return (
+    <ProtectedRoute>
       <main className="min-h-screen bg-gray-900 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0 }}
@@ -47,38 +57,52 @@ export default function AnalyzePage() {
           <p className="text-gray-400 mt-2">This takes a few moments</p>
         </motion.div>
       </main>
+    </ProtectedRoute>
     );
   }
 
   if (error || !analysis) {
     return (
       <main className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center text-red-400">
+        <div className="text-center text-red-400 p-8">
           <p className="text-2xl font-bold mb-2">Analysis failed</p>
-          <p className="text-gray-400">{error ?? "No dataset found. Please upload a dataset first."}</p>
-          <Link href="/upload" className="mt-6 inline-block px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">
-            Go to Upload
-          </Link>
+          <p className="text-gray-400 mb-6">{error ?? "No dataset found. Please upload a dataset first."}</p>
+          {isStale ? (
+            <button
+              onClick={() => { clearSession(); window.location.href = "/model-type"; }}
+              className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700"
+            >
+              Start Over
+            </button>
+          ) : (
+            <Link href="/upload" className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">
+              Go to Upload
+            </Link>
+          )}
         </div>
       </main>
     );
   }
 
-  const allDtypes = analysis.dtypes ?? {};
+  const allDtypes = analysis.dtypes && typeof analysis.dtypes === "object" ? analysis.dtypes : {};
   const effectiveTarget = targetColumn ?? analysis.target_column ?? null;
-  const shownColumns = new Set([...selectedColumns, ...(effectiveTarget ? [effectiveTarget] : [])]);
-  const dtypeEntries = (Object.entries(allDtypes) as [string, string][]).filter(
-    ([col]) => shownColumns.size === 0 || shownColumns.has(col)
-  );
-  const allFeatureStats = analysis.feature_stats ?? {};
-  const featureStats = Object.fromEntries(
-    Object.entries(allFeatureStats).filter(([col]) => shownColumns.size === 0 || shownColumns.has(col))
-  );
-  const classBalance = analysis.class_balance ?? null;
-  const shownCount = dtypeEntries.length;
-  const completeness = analysis.n_samples && analysis.missing_values !== undefined
-    ? Math.round(((analysis.n_samples * shownCount - analysis.missing_values) /
-        (analysis.n_samples * shownCount)) * 100)
+  const shownColumns = new Set(Array.isArray(selectedColumns) ? [...selectedColumns, ...(effectiveTarget ? [effectiveTarget] : [])] : []);
+  const dtypeEntries = Array.isArray(Object.entries(allDtypes))
+    ? (Object.entries(allDtypes) as [string, string][]).filter(
+        ([col]) => shownColumns.size === 0 || shownColumns.has(col)
+      )
+    : [];
+  const allFeatureStats = analysis.feature_stats && typeof analysis.feature_stats === "object" ? analysis.feature_stats : {};
+  const featureStats = Array.isArray(Object.entries(allFeatureStats))
+    ? Object.fromEntries(
+        Object.entries(allFeatureStats).filter(([col]) => shownColumns.size === 0 || shownColumns.has(col))
+      )
+    : {};
+  const classBalance = analysis.class_balance && typeof analysis.class_balance === "object" ? analysis.class_balance : null;
+  const shownCount = Math.max(0, dtypeEntries.length || 0);
+  const completeness = analysis.n_samples && analysis.missing_values !== undefined && shownCount > 0
+    ? Math.max(0, Math.round(((analysis.n_samples * shownCount - analysis.missing_values) /
+        (analysis.n_samples * shownCount)) * 100))
     : 100;
 
   return (
@@ -90,7 +114,7 @@ export default function AnalyzePage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12 mt-8"
         >
-          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400 mb-4">
             Dataset Analysis
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
@@ -136,7 +160,7 @@ export default function AnalyzePage() {
               {dtypeEntries.map(([col, dtype]) => (
                 <div key={col} className={`flex justify-between items-center px-3 py-2 rounded-lg ${col === effectiveTarget ? "bg-indigo-900/30 border border-indigo-700/40" : "bg-gray-800/50"}`}>
                   <span className="text-gray-200 text-sm font-mono truncate mr-2">{col}</span>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {col === effectiveTarget && <span className="text-xs text-indigo-300 bg-indigo-900/50 px-2 py-0.5 rounded-full">target</span>}
                     <span className="text-xs text-purple-300 bg-purple-900/30 px-2 py-1 rounded-full">{dtype}</span>
                   </div>
@@ -168,7 +192,7 @@ export default function AnalyzePage() {
                         <span className="text-amber-400 ml-2">{Math.round(Number(ratio) * 100)}%</span>
                       </div>
                       <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div className="bg-gradient-to-r from-amber-500 to-amber-400 h-2 rounded-full" style={{ width: `${Math.round(Number(ratio) * 100)}%` }} />
+                        <div className="bg-linear-to-r from-amber-500 to-amber-400 h-2 rounded-full" style={{ width: `${Math.round(Number(ratio) * 100)}%` }} />
                       </div>
                     </div>
                   ))}
@@ -239,7 +263,7 @@ export default function AnalyzePage() {
           </Link>
           <Link href="/select-pipeline" className="flex-1">
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg flex items-center justify-center">
+              className="w-full px-6 py-4 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg flex items-center justify-center">
               Select Pipeline
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

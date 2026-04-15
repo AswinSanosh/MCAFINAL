@@ -4,15 +4,19 @@
 import { useState, useEffect } from "react";
 import { useDataset } from "../../lib/hooks/useDataset";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
 
 export default function PipelinePage() {
-  const { datasetId, taskType, setJobStatus, setPipelineConfig } = useDataset();
+  const { datasetId, taskType, setJobStatus, setPipelineConfig, imageZipPath } = useDataset();
+  const isImageClustering = taskType === 'clustering' && !!imageZipPath;
   const [selectedPipeline, setSelectedPipeline] = useState<number | null>(null);
   const [approach, setApproach] = useState<"ai" | "custom">("ai");
   const [aiPipelines, setAiPipelines] = useState<any[]>([]);
+  const [topPick, setTopPick] = useState<number | null>(null);
+  const [aiPowered, setAiPowered] = useState(false);
   const [loadingRecs, setLoadingRecs] = useState(true);
   const [recError, setRecError] = useState<string | null>(null);
 
@@ -25,10 +29,17 @@ export default function PipelinePage() {
       .then(data => {
         if (data.error) throw new Error(data.error);
         setAiPipelines(data.pipelines ?? []);
+        setTopPick(data.top_pick ?? null);
+        setAiPowered(data.ai_powered ?? false);
       })
       .catch(err => setRecError(err.message ?? "Failed to load recommendations"))
       .finally(() => setLoadingRecs(false));
   }, [datasetId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Force custom builder when doing image clustering (no tabular dataset for AI recs)
+  useEffect(() => {
+    if (isImageClustering) setApproach("custom");
+  }, [isImageClustering]);
 
   // Full ML pipeline steps with model options
   const mlSteps = [
@@ -84,6 +95,14 @@ export default function PipelinePage() {
               { name: "MLPRegressor", desc: "Multi-layer perceptron (neural net)" },
               { name: "KNeighborsRegressor", desc: "Instance-based regression" },
             ]
+          : isImageClustering
+          ? [
+              { name: "KMeans",                  desc: "Centroid-based clustering" },
+              { name: "DBSCAN",                  desc: "Density-based, finds noise" },
+              { name: "AgglomerativeClustering", desc: "Hierarchical bottom-up clustering" },
+              { name: "GaussianMixture",         desc: "Probabilistic mixture model" },
+              { name: "SpectralClustering",      desc: "Graph-based manifold clustering" },
+            ]
           : [
               { name: "KMeans", desc: "Centroid-based clustering" },
               { name: "DBSCAN", desc: "Density-based clustering" },
@@ -110,9 +129,16 @@ export default function PipelinePage() {
     postprocessing: "",
   });
 
-  const selectPipeline = (pipelineId: number) => {
-    setSelectedPipeline(pipelineId);
-    setPipelineConfig({ type: "ai", ai_pipeline_id: pipelineId });
+  const selectPipeline = (pipeline: any) => {
+    setSelectedPipeline(pipeline.id);
+    setPipelineConfig({
+      type: "ai",
+      ai_pipeline_id: pipeline.id,
+      algorithm: pipeline.algorithm,
+      preprocessing: pipeline.preprocessing,
+      feature_engineering: pipeline.feature_engineering,
+      postprocessing: pipeline.postprocessing,
+    });
     window.location.href = "/train";
   };
 
@@ -123,10 +149,10 @@ export default function PipelinePage() {
   const trainCustomPipeline = () => {
     setPipelineConfig({
       type: "custom",
-      preprocessing: customSelection.preprocessing || "StandardScaler",
-      feature_engineering: customSelection.feature_engineering || "None",
+      preprocessing: isImageClustering ? "None" : (customSelection.preprocessing || "StandardScaler"),
+      feature_engineering: isImageClustering ? "None" : (customSelection.feature_engineering || "None"),
       algorithm: customSelection.algorithm,
-      postprocessing: customSelection.postprocessing || "None",
+      postprocessing: isImageClustering ? "None" : (customSelection.postprocessing || "None"),
     });
     window.location.href = "/train";
   };
@@ -140,7 +166,8 @@ export default function PipelinePage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
+    <ProtectedRoute>
+      <main className="min-h-screen bg-linear-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -149,7 +176,7 @@ export default function PipelinePage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12 mt-8"
         >
-          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400 mb-4">
             Build Your ML Pipeline
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
@@ -169,7 +196,7 @@ export default function PipelinePage() {
               onClick={() => setApproach("ai")}
               className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 ${
                 approach === "ai"
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                  ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
                   : "text-gray-300 hover:text-white"
               }`}
             >
@@ -179,7 +206,7 @@ export default function PipelinePage() {
               onClick={() => setApproach("custom")}
               className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 ${
                 approach === "custom"
-                  ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-lg"
+                  ? "bg-linear-to-r from-blue-600 to-cyan-600 text-white shadow-lg"
                   : "text-gray-300 hover:text-white"
               }`}
             >
@@ -191,10 +218,34 @@ export default function PipelinePage() {
         {/* AI Recommendations */}
         {approach === "ai" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+
+            {/* AI-powered indicator */}
+            <AnimatePresence>
+              {!loadingRecs && aiPowered && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center justify-center gap-2 mb-8"
+                >
+                  <span className="flex items-center gap-2 px-4 py-2 bg-purple-900/30 border border-purple-700/40 rounded-full text-sm text-purple-300">
+                    <svg className="h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Ranked by AI · analysed your dataset samples &amp; description
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {loadingRecs && (
-              <div className="flex justify-center items-center py-20">
-                <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-indigo-500 mr-4" />
-                <p className="text-indigo-400 text-lg">Generating recommendations…</p>
+              <div className="flex flex-col justify-center items-center py-20 gap-4">
+                <div className="relative">
+                  <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-indigo-500" />
+                  <div className="animate-spin rounded-full h-16 w-16 border-r-4 border-purple-500/30 absolute inset-0" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+                </div>
+                <p className="text-indigo-400 text-lg font-medium">Asking AI to analyse your dataset…</p>
+                <p className="text-gray-500 text-sm">Sending samples to OpenRouter · this may take ~10 s</p>
               </div>
             )}
             {recError && (
@@ -208,50 +259,94 @@ export default function PipelinePage() {
             )}
             {!loadingRecs && !recError && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-                {aiPipelines.map((pipeline: any) => (
-                  <motion.div
-                    key={pipeline.id}
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => selectPipeline(pipeline.id)}
-                    className={`cursor-pointer rounded-2xl border p-6 transition-all duration-300 ${
-                      selectedPipeline === pipeline.id
-                        ? "border-indigo-500 bg-indigo-900/20 shadow-lg shadow-indigo-500/20"
-                        : "border-gray-700 bg-gray-800/50 hover:border-indigo-600/50 hover:bg-gray-800"
-                    }`}
-                  >
-                    {/* Score badge */}
-                    <div className="flex justify-between items-start mb-4">
-                      <span className="text-xs font-bold text-indigo-300 bg-indigo-900/40 px-2 py-1 rounded-full">Pipeline #{pipeline.id}</span>
-                      {pipeline.score && (
-                        <span className="text-xs font-bold text-emerald-300 bg-emerald-900/40 px-2 py-1 rounded-full">
-                          Score ~{(pipeline.score * 100).toFixed(0)}%
-                        </span>
+                {aiPipelines.map((pipeline: any, idx: number) => {
+                  const isTop = pipeline.top_pick === true;
+                  const rankNum = idx + 1;
+                  return (
+                    <motion.div
+                      key={pipeline.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.07 }}
+                      whileHover={{ scale: 1.02, y: -4 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => selectPipeline(pipeline)}
+                      className={`relative cursor-pointer rounded-2xl border p-6 transition-all duration-300 ${
+                        selectedPipeline === pipeline.id
+                          ? "border-indigo-500 bg-indigo-900/20 shadow-lg shadow-indigo-500/20"
+                          : isTop
+                          ? "border-purple-500/60 bg-purple-900/10 shadow-md shadow-purple-500/10"
+                          : "border-gray-700 bg-gray-800/50 hover:border-indigo-600/50 hover:bg-gray-800"
+                      }`}
+                    >
+                      {/* Top pick ribbon */}
+                      {isTop && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-linear-to-r from-purple-600 to-indigo-600 rounded-full text-xs font-bold text-white shadow-md whitespace-nowrap">
+                          ✦ AI Top Pick
+                        </div>
                       )}
-                    </div>
 
-                    <h3 className="text-lg font-bold text-white mb-2 leading-snug">{pipeline.name}</h3>
-                    <p className="text-gray-400 text-sm mb-4">{pipeline.description}</p>
+                      {/* Header row: rank + pipeline id + score */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-2">
+                          {aiPowered && (
+                            <span className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
+                              rankNum === 1 ? "bg-yellow-500/20 text-yellow-300"
+                              : rankNum === 2 ? "bg-gray-400/20 text-gray-300"
+                              : rankNum === 3 ? "bg-amber-700/20 text-amber-600"
+                              : "bg-gray-700/40 text-gray-500"
+                            }`}>
+                              {rankNum}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-indigo-300 bg-indigo-900/40 px-2 py-1 rounded-full">
+                            Pipeline #{pipeline.id}
+                          </span>
+                        </div>
+                        {pipeline.score && (
+                          <span className="text-xs font-bold text-blue-300 bg-blue-900/40 px-2 py-1 rounded-full">
+                            ~{(pipeline.score * 100).toFixed(0)}% score
+                          </span>
+                        )}
+                      </div>
 
-                    {/* Components */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {(pipeline.components ?? []).map((c: string) => (
-                        <span key={c} className="text-xs text-indigo-300 bg-indigo-900/30 px-2 py-1 rounded-full">{c}</span>
-                      ))}
-                    </div>
+                      <h3 className="text-lg font-bold text-white mb-2 leading-snug">{pipeline.name}</h3>
+                      <p className="text-gray-400 text-sm mb-3">{pipeline.description}</p>
 
-                    <div className="flex justify-between text-xs text-gray-500 border-t border-gray-700 pt-3 mt-2">
-                      <span className={`font-medium ${complexityColor[pipeline.complexity] ?? "text-gray-400"}`}>
-                        {pipeline.complexity ?? "—"} complexity
-                      </span>
-                      <span>⏱ {pipeline.trainingTime ?? "—"}</span>
-                    </div>
+                      {/* AI reason */}
+                      {pipeline.ai_reason && (
+                        <div className="mb-4 px-3 py-2 bg-purple-900/20 border border-purple-700/30 rounded-lg">
+                          <p className="text-xs text-purple-300 leading-relaxed">
+                            <span className="font-semibold text-purple-200">AI: </span>
+                            {pipeline.ai_reason}
+                          </p>
+                        </div>
+                      )}
 
-                    <div className="mt-4 w-full py-2 text-center bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold text-sm hover:from-indigo-700 hover:to-purple-700 transition-all">
-                      Select &amp; Train →
-                    </div>
-                  </motion.div>
-                ))}
+                      {/* Components */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {(pipeline.components ?? []).map((c: string) => (
+                          <span key={c} className="text-xs text-indigo-300 bg-indigo-900/30 px-2 py-1 rounded-full">{c}</span>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-between text-xs text-gray-500 border-t border-gray-700 pt-3 mt-2">
+                        <span className={`font-medium ${complexityColor[pipeline.complexity] ?? "text-gray-400"}`}>
+                          {pipeline.complexity ?? "—"} complexity
+                        </span>
+                        <span>⏱ {pipeline.trainingTime ?? "—"}</span>
+                      </div>
+
+                      <div className={`mt-4 w-full py-2 text-center rounded-xl font-bold text-sm transition-all ${
+                        isTop
+                          ? "bg-linear-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700"
+                          : "bg-linear-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700"
+                      }`}>
+                        Select &amp; Train →
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </motion.div>
@@ -260,16 +355,22 @@ export default function PipelinePage() {
         {/* Custom Pipeline Builder */}
         {approach === "custom" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+            {isImageClustering && (
+              <div className="mb-6 p-4 bg-blue-900/20 border border-blue-700/40 rounded-xl text-blue-300 text-sm flex items-center gap-3">
+                <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span>Image clustering mode — pick an algorithm below. PCA preprocessing and pixel feature extraction are handled automatically.</span>
+              </div>
+            )}
             <div className="space-y-6 mb-8">
-              {mlSteps.map((step) => (
+              {(isImageClustering ? mlSteps.filter(s => s.id === "algorithm") : mlSteps).map((step) => (
                 <div key={step.id} className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6">
                   <div className="flex items-center mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 text-indigo-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-3 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={step.icon} />
                     </svg>
                     <h3 className="text-lg font-bold text-white">{step.title}</h3>
                     {customSelection[step.id] && (
-                      <span className="ml-auto text-sm text-emerald-400 bg-emerald-900/30 px-3 py-1 rounded-full">{customSelection[step.id]}</span>
+                      <span className="ml-auto text-sm text-blue-400 bg-blue-900/30 px-3 py-1 rounded-full">{customSelection[step.id]}</span>
                     )}
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -300,7 +401,7 @@ export default function PipelinePage() {
                 disabled={!isCustomComplete}
                 className={`px-8 py-4 rounded-xl font-bold text-lg transition-all ${
                   isCustomComplete
-                    ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white hover:from-emerald-700 hover:to-cyan-700 shadow-lg"
+                    ? "bg-linear-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700"
                     : "bg-gray-700 text-gray-500 cursor-not-allowed"
                 }`}
               >
@@ -310,11 +411,14 @@ export default function PipelinePage() {
           </motion.div>
         )}
 
-        {/* Back */}
-        <div className="mt-8">
+        {/* Back to Analysis */}
+        <div className="flex justify-start mt-8">
           <Link href="/analyze">
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              className="px-6 py-3 bg-gray-700 text-gray-300 rounded-xl font-medium hover:bg-gray-600 transition-all border border-gray-600 flex items-center">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center px-6 py-3 rounded-xl font-medium text-gray-300 hover:text-white border border-gray-700 hover:border-gray-600 transition-all"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
@@ -324,5 +428,6 @@ export default function PipelinePage() {
         </div>
       </div>
     </main>
+    </ProtectedRoute>
   );
 }

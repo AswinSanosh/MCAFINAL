@@ -1,39 +1,35 @@
-# Python
+# Ignore Python cache
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-.Python
-env/
+
+# Ignore virtual environments
 venv/
-.venv/
-*.egg-info/
-dist/
-build/
+.env/
 
-# Django
-*.log
-local_settings.py
-db.sqlite3
+# Ignore Django migrations
+**/migrations/*
+!**/migrations/__init__.py
 
-# Media / ML model files (too large for GitHub)
-media/models/
+# Ignore SQLite database
+*.sqlite3
+
+# Ignore media uploads
 media/datasets/
-*.pkl
-*.onnx
+media/models/
+media/image_results/
+# Ignore large image zips
+media/image_zips/
 
-# Environment
-.env
-.env.local
-.env.*.local
-
-# Node / Next.js
-node_modules/
+# Ignore frontend build
 frontend/.next/
-frontend/out/
-frontend/build/
-frontend/.env*.local
+frontend/node_modules/
 
-# OS
+# Ignore OS files
 .DS_Store
 Thumbs.db
+
+# Ignore logs
+*.log
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/

@@ -108,6 +108,8 @@ type DatasetContextType = {
   setDatasetColumns: (cols: DatasetColumn[]) => void;
   datasetFilename: string;
   setDatasetFilename: (name: string) => void;
+  imageZipPath: string | null;
+  setImageZipPath: (path: string | null) => void;
   jobStatus: JobStatus;
   setJobStatus: (status: JobStatus) => void;
   pipelineConfig: PipelineConfig | null;
@@ -122,33 +124,62 @@ type DatasetContextType = {
 const DatasetContext = createContext<DatasetContextType | undefined>(undefined);
 
 export function DatasetProvider({ children }: { children: React.ReactNode }) {
-  const [datasetId, setDatasetId] = usePersisted<string | null>("datasetId", null);
-  const [taskType, setTaskType] = usePersisted<'classification' | 'clustering' | 'regression' | null>("taskType", null);
+  const [datasetId, setDatasetId_raw] = usePersisted<string | null>("datasetId", null);
+  const [taskType, setTaskType_raw] = usePersisted<'classification' | 'clustering' | 'regression' | null>("taskType", null);
   const [description, setDescription] = usePersisted<string>("description", '');
   const [selectedColumns, setSelectedColumns] = usePersisted<string[]>("selectedColumns", []);
   const [targetColumn, setTargetColumn] = usePersisted<string | null>("targetColumn", null);
   const [datasetColumns, setDatasetColumns] = usePersisted<DatasetColumn[]>("datasetColumns", []);
   const [datasetFilename, setDatasetFilename] = usePersisted<string>("datasetFilename", "");
+  const [imageZipPath, setImageZipPath_raw] = usePersisted<string | null>("imageZipPath", null);
   // jobStatus is ephemeral — no need to persist
   const [jobStatus, setJobStatus] = useState<JobStatus>('idle');
-  const [pipelineConfig, setPipelineConfig] = usePersisted<PipelineConfig | null>("pipelineConfig", null);
-  const [trainingResult, setTrainingResult] = usePersisted<TrainingResult | null>("trainingResult", null);
+  const [pipelineConfig, setPipelineConfig_raw] = usePersisted<PipelineConfig | null>("pipelineConfig", null);
+  const [trainingResult, setTrainingResult_raw] = usePersisted<TrainingResult | null>("trainingResult", null);
   const [optimizationResult, setOptimizationResult] = usePersisted<OptimizationResult | null>("optimizationResult", null);
 
   const clearSession = useCallback(() => {
     if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
-    setDatasetId(null);
-    setTaskType(null);
+    setDatasetId_raw(null);
+    setTaskType_raw(null);
     setDescription('');
     setSelectedColumns([]);
     setTargetColumn(null);
     setDatasetColumns([]);
     setDatasetFilename("");
+    setImageZipPath_raw(null);
     setJobStatus('idle');
-    setPipelineConfig(null);
-    setTrainingResult(null);
+    setPipelineConfig_raw(null);
+    setTrainingResult_raw(null);
     setOptimizationResult(null);
   }, []);
+
+  // Cascade-clearing setters: changing an upstream step invalidates all downstream state
+  const setTaskType = useCallback((type: 'classification' | 'clustering' | 'regression' | null) => {
+    setTaskType_raw(type);
+    setImageZipPath_raw(null);
+    setPipelineConfig_raw(null);
+    setTrainingResult_raw(null);
+    setOptimizationResult(null);
+  }, [setTaskType_raw, setImageZipPath_raw, setPipelineConfig_raw, setTrainingResult_raw, setOptimizationResult]);
+
+  const setDatasetId = useCallback((id: string | null) => {
+    setDatasetId_raw(id);
+    setPipelineConfig_raw(null);
+    setTrainingResult_raw(null);
+    setOptimizationResult(null);
+  }, [setDatasetId_raw, setPipelineConfig_raw, setTrainingResult_raw, setOptimizationResult]);
+
+  const setPipelineConfig = useCallback((config: PipelineConfig | null) => {
+    setPipelineConfig_raw(config);
+    setTrainingResult_raw(null);
+    setOptimizationResult(null);
+  }, [setPipelineConfig_raw, setTrainingResult_raw, setOptimizationResult]);
+
+  const setTrainingResult = useCallback((result: TrainingResult | null) => {
+    setTrainingResult_raw(result);
+    setOptimizationResult(null);
+  }, [setTrainingResult_raw, setOptimizationResult]);
 
   return (
     <DatasetContext.Provider
@@ -160,6 +191,7 @@ export function DatasetProvider({ children }: { children: React.ReactNode }) {
         targetColumn, setTargetColumn,
         datasetColumns, setDatasetColumns,
         datasetFilename, setDatasetFilename,
+        imageZipPath, setImageZipPath: setImageZipPath_raw,
         jobStatus, setJobStatus,
         pipelineConfig, setPipelineConfig,
         trainingResult, setTrainingResult,

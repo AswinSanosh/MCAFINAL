@@ -1,12 +1,15 @@
 // src/app/upload/page.tsx — column selection merged inline
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDataset, DatasetColumn } from "../../lib/hooks/useDataset";
 import { motion } from "framer-motion";
 
-const API_BASE = "http://localhost:8000/api";
+import { apiFetch } from "../../lib/auth";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
 
 type ColInfo = DatasetColumn;
 
@@ -22,68 +25,68 @@ function dtypeBadge(dtype: string) {
   return DTYPE_BADGE[dtype] ?? DTYPE_BADGE["default"];
 }
 
-export default function UploadPage() {
+function UploadPageContent() {
+          // Helper to apply column data from upload response
+          const applyColumnData = (rawColumns: string[], rawDtypes: Record<string, string>, rawTarget: string | null) => {
+            const cols: ColInfo[] = rawColumns.map((name) => ({
+              name,
+              dtype: rawDtypes[name] ?? "object",
+            }));
+            setDatasetColumns(cols);
+            // Default: last column as target (supervised), everything else as features
+            const defaultTarget = rawTarget ?? cols[cols.length - 1]?.name ?? null;
+            setTargetColumn(defaultTarget);
+            setSelectedColumns(cols.map((c) => c.name).filter((n) => n !== defaultTarget));
+          };
+        const [preview, setPreview] = useState<string[]>([]);
+      // All missing state hooks
+      const [driveLink, setDriveLink] = useState<string>("");
+      const [error, setError] = useState<string | null>(null);
+      const [uploading, setUploading] = useState(false);
+      const [nSamples, setNSamples] = useState<number | null>(null);
+      const [uploadedId, setUploadedId] = useState<string | null>(null);
+      const [saving, setSaving] = useState(false);
+      const [imageFile, setImageFile] = useState<File | null>(null);
+      const [imageUploading, setImageUploading] = useState(false);
+      const [dataType, setDataType] = useState<"tabular" | "image">("tabular");
+
+      // File input handler
+      const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        if (!f.name.endsWith(".csv") && !f.name.endsWith(".xlsx")) {
+          setError("Please upload a CSV or Excel file.");
+          return;
+        }
+        setFile(f);
+        setError(null);
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          // Optionally preview file content here
+        };
+        reader.readAsText(f);
+      };
+    // Add file state for uploaded file
+    const [file, setFile] = useState<File | null>(null);
+  // Add datasetSource state for upload/drive
+  const [datasetSource, setDatasetSource] = useState<"upload" | "drive">("upload");
+
   const {
     setDatasetId, setTaskType, setJobStatus,
     selectedColumns, setSelectedColumns,
     targetColumn, setTargetColumn,
     datasetColumns: columns, setDatasetColumns,
     datasetFilename, setDatasetFilename,
+    setImageZipPath,
   } = useDataset();
+
+  // Add phase state for upload/columns
+  const [phase, setPhase] = useState<"upload" | "columns">("upload");
 
   const searchParams = useSearchParams();
   const taskFromUrl = (searchParams.get("task") ?? "classification") as
     | "classification" | "clustering" | "regression";
   const isClustering = taskFromUrl === "clustering";
-
-  // Upload phase state
-  const [file, setFile] = useState<File | null>(null);
-  const [driveLink, setDriveLink] = useState<string>("");
-  const [datasetSource, setDatasetSource] = useState<"upload" | "drive">("upload");
-  const [preview, setPreview] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-
-  // Column-selection phase state
-  const [phase, setPhase] = useState<"upload" | "columns">("upload");
-  const [nSamples, setNSamples] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [uploadedId, setUploadedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setTaskType(taskFromUrl);
-  }, [taskFromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!f.name.endsWith(".csv") && !f.name.endsWith(".xlsx")) {
-      setError("Please upload a CSV or Excel file.");
-      return;
-    }
-    setFile(f);
-    setError(null);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      setPreview(text.split("\n").slice(0, 6));
-    };
-    reader.readAsText(f);
-  };
-
-  // Populate column state from the upload response (no extra network call needed)
-  const applyColumnData = (rawColumns: string[], rawDtypes: Record<string, string>, rawTarget: string | null) => {
-    const cols: ColInfo[] = rawColumns.map((name) => ({
-      name,
-      dtype: rawDtypes[name] ?? "object",
-    }));
-    setDatasetColumns(cols);
-
-    // Default: last column as target (supervised), everything else as features
-    const defaultTarget = rawTarget ?? cols[cols.length - 1]?.name ?? null;
-    setTargetColumn(defaultTarget);
-    setSelectedColumns(cols.map((c) => c.name).filter((n) => n !== defaultTarget));
-  };
 
   const handleUpload = async () => {
     if (datasetSource === "upload" && !file) {
@@ -95,14 +98,16 @@ export default function UploadPage() {
       return;
     }
     setUploading(true);
-    setJobStatus("uploading");
     setError(null);
     try {
       if (datasetSource === "upload") {
         const formData = new FormData();
         formData.append("file", file!);
         formData.append("task_type", taskFromUrl);
-        const res = await fetch(`${API_BASE}/upload/`, { method: "POST", body: formData });
+        const res = await apiFetch(`${API_BASE}/upload/`, {
+          method: "POST",
+          body: formData,
+        });
         if (!res.ok) throw new Error("Upload failed");
         const data = await res.json();
         const dsId = String(data.dataset_id);
@@ -121,12 +126,29 @@ export default function UploadPage() {
         );
         setPhase("columns");
       } else {
-        setError("Google Drive upload is not yet implemented.");
-        setJobStatus("error");
+        const res = await apiFetch(`${API_BASE}/upload-drive/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ drive_url: driveLink, task_type: taskFromUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Drive import failed");
+        const dsId = String(data.dataset_id);
+        setDatasetId(dsId);
+        setUploadedId(dsId);
+        setDatasetFilename(data.filename);
+        setTaskType(data.task_type || taskFromUrl);
+        setNSamples(data.n_samples ?? null);
+        setJobStatus("analyzing");
+        applyColumnData(
+          (data.columns as string[]) ?? [],
+          (data.dtypes as Record<string, string>) ?? {},
+          data.target_column ?? null,
+        );
       }
-    } catch {
-      setError("Upload failed. Please try again.");
-      setJobStatus("error");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(msg);
     } finally {
       setUploading(false);
     }
@@ -160,6 +182,29 @@ export default function UploadPage() {
     ? selectedColumns.length >= 2
     : selectedColumns.length >= 1 && !!targetColumn;
 
+  const handleImageUpload = async () => {
+    if (!imageFile) { setError("Please select a ZIP archive of images."); return; }
+    setImageUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", imageFile);
+      const res = await fetch(`${API_BASE}/image-upload/`, { 
+        method: "POST", 
+        body: formData,
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setImageZipPath(data.zip_path);
+      window.location.href = "/select-pipeline";
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
   const handleContinue = async () => {
     setSaving(true);
     if (!isClustering && targetColumn && uploadedId) {
@@ -167,6 +212,7 @@ export default function UploadPage() {
         await fetch(`${API_BASE}/columns/${uploadedId}/`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          credentials: 'include',
           body: JSON.stringify({ target_column: targetColumn }),
         });
       } catch { /* non-critical */ }
@@ -375,8 +421,101 @@ export default function UploadPage() {
   //  PHASE: FILE UPLOAD
   // ════════════════════════════════════════════
 
+  // ── Image ZIP early return ──────────────────────────────────────────
+  const isImageMode = isClustering && dataType === "image";
+  if (isImageMode) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10 mt-8">
+            <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 mb-3">
+              Upload Image Dataset
+            </h1>
+            <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+              Upload a ZIP archive of images to cluster visually similar images together
+            </p>
+          </motion.div>
+
+          {/* Data Type Toggle */}
+          <div className="mb-8 flex justify-center">
+            <div className="inline-flex bg-gray-800/50 p-1 rounded-xl border border-gray-700">
+              <button
+                onClick={() => setDataType("tabular")}
+                className="px-6 py-2.5 rounded-lg text-gray-300 hover:text-white font-medium transition-all"
+              >
+                📊 Tabular
+              </button>
+              <button className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-medium">
+                🖼️ Image ZIP
+              </button>
+            </div>
+          </div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-gray-800/50 rounded-2xl border border-gray-700 p-8"
+          >
+            <div
+              className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all duration-300 ${
+                imageFile ? "border-emerald-500 bg-emerald-900/10" : "border-gray-600 hover:border-emerald-500 hover:bg-emerald-900/5"
+              }`}
+              onClick={() => document.getElementById("imageZipInput")?.click()}
+            >
+              <input
+                id="imageZipInput" type="file" accept=".zip" className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  if (!f.name.toLowerCase().endsWith(".zip")) {
+                    setError("Please upload a ZIP archive (.zip) containing your images."); return;
+                  }
+                  if (f.size > 200 * 1024 * 1024) { setError("File exceeds the 200 MB limit."); return; }
+                  setImageFile(f); setError(null);
+                }}
+              />
+              <div className="w-16 h-16 rounded-full bg-emerald-900/30 flex items-center justify-center mx-auto mb-5">
+                <svg className="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              {imageFile ? (
+                <><p className="text-emerald-400 font-semibold text-lg">{imageFile.name}</p>
+                  <p className="text-gray-400 text-sm mt-1">{(imageFile.size / 1024 / 1024).toFixed(2)} MB · Click to change</p></>
+              ) : (
+                <><p className="text-white font-semibold text-lg mb-1">Drag &amp; drop your ZIP archive here</p>
+                  <p className="text-gray-400 text-sm">or click to browse · Max 200 MB</p>
+                  <p className="text-gray-500 text-xs mt-3">ZIP should contain JPG, PNG, WEBP, or BMP images</p></>
+              )}
+            </div>
+
+            {error && (
+              <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-sm">{error}</div>
+            )}
+
+            <div className="flex gap-4 mt-6">
+              <button onClick={() => window.history.back()}
+                className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl font-semibold transition-colors">
+                ← Back
+              </button>
+              <motion.button
+                whileHover={{ scale: imageFile && !imageUploading ? 1.02 : 1 }}
+                whileTap={{ scale: imageFile && !imageUploading ? 0.98 : 1 }}
+                onClick={handleImageUpload}
+                disabled={!imageFile || imageUploading}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700 text-white rounded-xl font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {imageUploading ? "Uploading…" : "Upload & Select Algorithm →"}
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
+    <ProtectedRoute>
+      <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -391,6 +530,30 @@ export default function UploadPage() {
             Get started by uploading your data file or providing a Google Drive link
           </p>
         </motion.div>
+
+        {/* Data Type Toggle — clustering only */}
+        {isClustering && (
+          <div className="mb-8 flex justify-center">
+            <div className="inline-flex bg-gray-800/50 p-1 rounded-xl border border-gray-700">
+              <button
+                onClick={() => setDataType("tabular")}
+                className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
+                  dataType === "tabular" ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white" : "text-gray-300 hover:text-white"
+                }`}
+              >
+                📊 Tabular Dataset
+              </button>
+              <button
+                onClick={() => setDataType("image")}
+                className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
+                  dataType === "image" ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white" : "text-gray-300 hover:text-white"
+                }`}
+              >
+                🖼️ Image ZIP
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Dataset Source Selection */}
         <div className="mb-8">
@@ -655,5 +818,14 @@ export default function UploadPage() {
         </motion.div>
       </div>
     </main>
+    </ProtectedRoute>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-900 flex items-center justify-center"><div className="text-indigo-400">Loading...</div></div>}>
+      <UploadPageContent />
+    </Suspense>
   );
 }

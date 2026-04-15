@@ -5,8 +5,9 @@ import { useState } from "react";
 import { useDataset } from "../../lib/hooks/useDataset";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
 
 export default function ExportPage() {
   const { trainingResult, optimizationResult } = useDataset();
@@ -55,7 +56,8 @@ export default function ExportPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
+    <ProtectedRoute>
+      <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
@@ -198,5 +200,6 @@ predictions = model.predict(X_scaled)`}</pre>
         </div>
       </div>
     </main>
+    </ProtectedRoute>
   );
 }

@@ -1,0 +1,1738 @@
+\documentclass[12pt,a4paper]{report}
+\newcommand{\chapterpage}[2]{
+    \clearpage
+    \thispagestyle{empty}
+
+    \vspace*{\fill}
+    \begin{center}
+        \textbf{\MakeUppercase{CHAPTER #1}}\\[1cm]
+        \textbf{\MakeUppercase{#2}}
+    \end{center}
+    \vspace*{\fill}
+
+    \clearpage
+}
+
+% ---------------- Packages ----------------
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{setspace}
+\setlength{\parindent}{0pt}     % No paragraph indentation
+\setlength{\parskip}{8pt}
+\usepackage{tocloft}
+\usepackage{float}
+\makeatletter
+\renewcommand{\@cftmaketoctitle}{%
+  \chapter*{%
+    \centering
+    \fontsize{14pt}{16pt}\selectfont
+    \textbf{TABLE OF CONTENTS}
+  }
+}
+\makeatother
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep, topsep=6pt}
+\usepackage{needspace}
+\usepackage{pdfpages}
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{14pt}{10pt}
+\titlespacing*{\subsection}{0pt}{12pt}{8pt}
+\usepackage{fancyhdr}
+\setlength{\headheight}{14pt}
+\usepackage{adjustbox}
+\usepackage{subcaption}
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single
+}
+% ---------------- Table of Contents Formatting ----------------
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+
+
+
+% Vertical spacing around title
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{20pt}
+
+% Indentation & alignment
+\setlength{\cftchapindent}{0pt}
+\setlength{\cftsecindent}{1.5em}
+
+% Fonts
+\renewcommand{\cftchapfont}{\bfseries}
+\renewcommand{\cftchappagefont}{\bfseries}
+
+% Dotted leaders
+\renewcommand{\cftdotsep}{1}
+
+% Extra breathing space between chapters
+\setlength{\cftbeforechapskip}{6pt}
+
+% ---------- LIST OF FIGURES FORMAT ----------
+\renewcommand{\listfigurename}{LIST OF FIGURES}
+
+\makeatletter
+\renewcommand{\@cftmakeloftitle}{%
+  \chapter*{%
+    \centering
+    \fontsize{14pt}{16pt}\selectfont
+    \textbf{LIST OF FIGURES}
+  }
+}
+\makeatother
+
+% Spacing similar to TOC
+\setlength{\cftbeforeloftitleskip}{17pt}
+\setlength{\cftafterloftitleskip}{20pt}
+
+% ---------- LIST OF TABLES FORMAT ----------
+\renewcommand{\listtablename}{LIST OF TABLES}
+
+\makeatletter
+\renewcommand{\@cftmakelottitle}{%
+  \chapter*{%
+    \centering
+    \fontsize{14pt}{16pt}\selectfont
+    \textbf{LIST OF TABLES}
+  }
+}
+\makeatother
+
+% Spacing similar to TOC & LOF
+\setlength{\cftbeforelottitleskip}{17pt}
+\setlength{\cftafterlottitleskip}{20pt}
+% ---------------- Page Setup ----------------
+\geometry{
+    left=1.25in,
+    right=1in,
+    top=1in,
+    bottom=1in
+}
+
+\onehalfspacing
+
+% ---------------- Header & Footer for Main Content ----------------
+\fancypagestyle{maincontent}{
+    \fancyhf{}
+    \fancyhead[R]{\small AutoML Studio — No-Code Machine Learning Platform}
+    \fancyfoot[L]{\small Saintgits College of Engineering}
+    \fancyfoot[R]{\small \thepage}
+    \renewcommand{\headrulewidth}{0.4pt}
+    \renewcommand{\footrulewidth}{0.4pt}
+}
+
+% ---------------- Chapter Format (KTU Style) ----------------
+\titleformat{\section}
+{\bfseries\fontsize{14pt}{16pt}\selectfont}
+{\thesection}
+{1em}
+{}
+
+\titleformat{\subsection}
+{\bfseries\fontsize{12pt}{14pt}\selectfont}
+{\thesubsection}
+{1em}
+{}
+\newcommand{\bfFourteen}[1]{{\fontsize{14pt}{16pt}\selectfont\textbf{#1}}}
+% ---------- FIX TOC TOP SPACING ----------
+\usepackage{tocloft}
+
+% Remove extra padding before TOC title
+\setlength{\cftbeforetoctitleskip}{17pt}
+
+% Optional: space after TOC title
+\setlength{\cftaftertoctitleskip}{20pt}
+
+\makeatletter
+\renewenvironment{thebibliography}[1]
+  {\section*{}\@mkboth{}{}%
+   \list{\@biblabel{\@arabic\c@enumiv}}%
+        {\settowidth\labelwidth{\@biblabel{#1}}%
+         \leftmargin\labelwidth
+         \advance\leftmargin\labelsep
+         \itemsep=0.6\baselineskip
+         \usecounter{enumiv}%
+         \let\p@enumiv\@empty
+         \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+   \sloppy}
+  {\endlist}
+\makeatother
+\usepackage{chngcntr}
+\usepackage{chngcntr}
+\counterwithin{figure}{chapter}
+\begin{document}
+
+% ===================== PAGE 1 : TITLE PAGE =====================
+\thispagestyle{empty}
+
+\begin{center}
+\vspace*{0.3cm}
+
+\bfFourteen{PROJECT REPORT}\\[0.3cm]
+\bfFourteen{ON}\\[0.3cm]
+\bfFourteen{AUTOML STUDIO — AI-POWERED NO-CODE MACHINE LEARNING PLATFORM}\\[0.6cm]
+
+\bfFourteen{Submitted By,}\\[0.2cm]
+\bfFourteen{ASWIN SANOSH – MGP21NMC002}\\[0.5cm]
+
+\bfFourteen{To}\\[0.2cm]
+\textit{the APJ Abdul Kalam Technological University in partial}\\
+\textit{fulfillment of the requirements for the award of the degree of}\\[0.5cm]
+
+\makebox[\textwidth][c]{\bfFourteen{MASTER OF COMPUTER APPLICATIONS (INTEGRATED)}}
+
+\bfFourteen{Under the guidance of}\\[0.3cm]
+\bfFourteen{Dr. Jijo Varghese}\\
+\bfFourteen{Assistant Professor(Sr)}\\[0.8cm]
+
+\includegraphics[width=4.5cm]{saintgits_logo.jpg}\\[0.8cm]
+
+\bfFourteen{DEPARTMENT OF COMPUTER APPLICATIONS}\\[0.25cm]
+\bfFourteen{\makebox[\textwidth]{SAINTGITS COLLEGE OF ENGINEERING (AUTONOMOUS)}}
+\bfFourteen{PATHAMUTTOM, KOTTAYAM, KERALA – 686532}\\[0.3cm]
+
+\textit{(Approved by AICTE and affiliated to APJ Abdul Kalam Technological University)}\\[0.6cm]
+
+\bfFourteen{APRIL 2026}
+
+\end{center}
+
+% ===================== PAGE 2 : BONAFIDE =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+\makebox[\textwidth][c]{\fontsize{14pt}{16pt}\selectfont \textbf{SAINTGITS COLLEGE OF ENGINEERING (AUTONOMOUS)}}\\
+Kottukulam Hills, Pathamuttom, Kottayam, Kerala – 686532
+\end{center}
+
+\vspace{0.2cm}
+
+\begin{center}
+\includegraphics[width=4.5cm]{saintgits_logo.jpg}
+\end{center}
+
+\vspace{0.1cm}
+
+\begin{center}
+\fontsize{14pt}{16pt}\selectfont
+\textbf{BONAFIDE CERTIFICATE}
+\end{center}
+
+\vspace{0.2cm}
+
+Certified that the report entitled \textbf{AutoML Studio — AI-Powered No-Code Machine Learning Platform} submitted by \textbf{Aswin Sanosh - MGP21NMC002} to the APJ Abdul Kalam Technological University in partial fulfillment of the requirements for the award of the Degree of \textbf{Master of Computer Applications(Integrated)} is a bonafide record of the project work carried out by him under our guidance and supervision. This report in any form has not been submitted to any other University or Institute for any purpose.
+
+\vspace{2.2cm}
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\raggedright
+\textbf{Dr. Jijo Varghese}\\
+Internal Guide
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\textbf{Dr. Jijo Varghese}\\
+Project Co-ordinator
+\end{minipage}
+
+\vspace{1.8cm}
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\raggedright
+\textbf{Dr. Rani Saritha R}\\
+Head Of Department
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\textbf{Dr. Sudha T}\\
+Principal
+\end{minipage}
+
+\vspace{1.8cm}
+
+
+\textit{Viva-voce held on:}
+
+
+% ===================== PAGE 3 : ACKNOWLEDGEMENT =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{ACKNOWLEDGEMENT}}
+
+\end{center}
+
+\vspace{1cm}
+
+At the outset, I thank the lord almighty for his abundant grace, strength to make our endeavour a success. I express my deep-felt gratitude to \textbf{Dr. Sudha T.}, Principal, Saintgits College of Engineering(Autonomous) for her warm support with regard to the work and to the management for providing the facilities required.
+
+
+I would like to place my deep gratitude to \textbf{Prof. Mini Punnoose,} Director MCA, Saintgits College of Engineering (Autonomous) for her constant encouragement.I express my gratitude to \textbf{Dr. Rani Saritha R}, Head, Department of Computer Applications, Saintgits College of Engineering(Autonomous), for her support and guidance.
+
+
+I am profoundly grateful to \textbf{Dr. Jijo Varghese,} Assistant Professor(Sr) my project guide as well as the project co-ordinator for his valuable guidance, help, suggestions and assessment.
+
+
+Furthermore, I would like to thank all others especially my parents and numerous friends. This project report would not have been a success without their inspiration, valuable suggestions and moral support from them throughout its course.
+
+
+\vspace{2cm}
+
+\begin{flushright}
+\textbf{ASWIN SANOSH}
+\end{flushright}
+
+% ===================== PAGE 4 : DECLARATION =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{DECLARATION}}
+
+
+\end{center}
+
+\vspace{1cm}
+
+I, the undersigned, hereby declare that the project report
+\textbf{``AUTOML STUDIO — AI-POWERED NO-CODE MACHINE LEARNING PLATFORM''} submitted for partial
+fulfillment of requirements for the award of Degree of Master of Computer Applications(Integrated) of the APJ Abdul Kalam Technological University, Kerala,
+is a bonafide work done by me under the supervision of
+\textbf{Dr. JIJO VARGHESE}. This submission represents my ideas in my own words, and where ideas or words of others have been included, I have adequately and accurately cited and referenced the original sources. I also declare that I have adhered to the ethics of academic honesty and integrity and have not misrepresented or fabricated any data, idea, fact, or source in my submission.I understand that any violation of the above will be a cause for disciplinary action by the institute and/or the University and can also evoke penal action from the sources which have not been properly cited or from whom proper permission has not been obtained.This report has not previously formed the basis for the award of any degree, diploma, or similar title of any other University.
+
+\vspace{2cm}
+
+\begin{flushright}
+\textbf{ASWIN SANOSH}
+\end{flushright}
+
+\noindent
+Place: Kottayam\\
+Date:
+
+
+% ===================== PAGE 5 : ABSTRACT =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{ABSTRACT}}
+\end{center}
+
+\vspace{1cm}
+Machine learning has become indispensable across industries, yet building, training, and deploying ML models remains a task that demands significant programming expertise and deep knowledge of data science workflows. This barrier prevents domain experts, analysts, and non-technical users from leveraging the power of machine learning for their data. This project presents \textbf{AutoML Studio}, an AI-powered, no-code machine learning platform that enables users to build, train, optimize, and export production-ready ML models through an intuitive, guided web interface—without writing a single line of code.
+
+The platform implements a nine-step guided workflow: \textit{Model Type Selection} $\rightarrow$ \textit{Dataset Upload} $\rightarrow$ \textit{Dataset Description} $\rightarrow$ \textit{Automated Analysis} $\rightarrow$ \textit{AI Pipeline Recommendation} $\rightarrow$ \textit{Model Training} $\rightarrow$ \textit{Hyperparameter Optimization} $\rightarrow$ \textit{Results Visualization} $\rightarrow$ \textit{Model Export}. The system supports three fundamental ML task types: \textbf{classification}, \textbf{regression}, and \textbf{clustering}, as well as a dedicated \textbf{image clustering} module that processes ZIP archives of images.
+
+The backend is developed using \textbf{Python 3} with the \textbf{Django 5.2} web framework and \textbf{Django REST Framework (DRF)} for building RESTful API endpoints. The ML engine leverages \textbf{scikit-learn} for a comprehensive suite of algorithms including Random Forest, Gradient Boosting, Support Vector Machines, K-Nearest Neighbors, Logistic Regression, Decision Trees, Naive Bayes, MLP Neural Networks, K-Means, DBSCAN, Agglomerative Clustering, Spectral Clustering, Birch, Mean Shift, OPTICS, and Gaussian Mixture Models. \textbf{XGBoost} is integrated for high-performance gradient boosting. Hyperparameter optimization is performed using \textbf{Optuna}, a Bayesian optimization framework. Data preprocessing employs \textbf{pandas} and \textbf{NumPy} for data manipulation, \textbf{imbalanced-learn (SMOTE)} for handling class imbalance, and scikit-learn's preprocessing utilities including StandardScaler, MinMaxScaler, RobustScaler, PCA, PolynomialFeatures, and SelectKBest for feature engineering. Dimensionality reduction for clustering visualization uses \textbf{UMAP}. Asynchronous task execution is handled by \textbf{Celery} with \textbf{Redis} as the message broker. Model serialization uses \textbf{joblib}, and Google Drive dataset import is facilitated by \textbf{gdown}. AI-powered pipeline recommendations are generated via the \textbf{OpenRouter API} using the \textbf{Google Gemini 2.0 Flash} large language model.
+
+The frontend is built with \textbf{Next.js 16} (App Router) using \textbf{React 19} and \textbf{TypeScript}, styled with \textbf{Tailwind CSS v4}, and animated with \textbf{Framer Motion}. A Next.js API proxy routes all frontend API calls to the Django backend, enabling seamless cross-origin communication managed by \textbf{django-cors-headers}. Global state management is handled through React Context via a custom \texttt{useDataset} hook with localStorage persistence. The database uses \textbf{SQLite} for development with planned migration to \textbf{PostgreSQL} for production.
+
+The platform offers AI-curated pipeline presets—predefined combinations of scalers, feature engineering steps, and algorithms—ranked by an LLM based on the user's actual dataset characteristics. Trained models can be exported as \textbf{Python pickle (.pkl)} files or as auto-generated \textbf{Python inference scripts (.py)} for immediate deployment. The system demonstrates that the end-to-end machine learning lifecycle—from raw data to deployable model—can be made accessible to users with no programming background, while retaining the flexibility and power demanded by experienced practitioners.
+
+
+% ===================== TABLE OF CONTENTS =====================
+\pagenumbering{gobble}
+\pagestyle{empty}
+
+\tableofcontents
+
+
+\clearpage
+
+\listoffigures
+
+\clearpage
+
+\listoftables
+
+\clearpage
+
+
+% ===================== MAIN CONTENT =====================
+\newpage
+\pagenumbering{arabic}
+\pagestyle{maincontent}
+\setcounter{chapter}{1}
+\addcontentsline{toc}{chapter}{CHAPTER 1 \quad INTRODUCTION}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 1}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{INTRODUCTION}}
+\end{minipage}}
+
+\clearpage
+
+\section{Introduction}
+Machine learning has emerged as a transformative technology across virtually every industry, enabling organizations to extract actionable insights from data, automate complex decision-making, and build intelligent systems. However, the process of building, training, and deploying machine learning models has traditionally required extensive programming expertise, deep understanding of statistical concepts, and familiarity with specialized tools and libraries. This technical barrier prevents a large segment of potential users—domain experts, business analysts, researchers, and students—from leveraging ML for their data-driven needs.
+
+Existing solutions such as Google AutoML, Amazon SageMaker, and Azure Machine Learning offer powerful capabilities but are often tied to proprietary cloud ecosystems, incur significant costs, and still demand a considerable level of technical proficiency. Open-source alternatives like Auto-sklearn and TPOT automate portions of the ML pipeline but operate as Python libraries requiring programming knowledge. There exists a clear gap for a self-hosted, open-source, truly no-code platform that guides users through the entire ML lifecycle via an intuitive web interface.
+
+To address these challenges, \textbf{AutoML Studio} has been developed as an AI-powered, no-code machine learning platform. The system provides a guided, nine-step workflow that takes users from raw data to a deployable model without requiring them to write any code. The workflow encompasses: selecting the ML task type (classification, regression, or clustering), uploading a dataset (CSV, Excel, or via Google Drive link), describing the dataset and analysis goals, automated statistical profiling and analysis, AI-powered pipeline recommendation using a large language model, model training with real-time status polling, Bayesian hyperparameter optimization via Optuna, comprehensive results visualization, and model export as pickle files or auto-generated inference scripts.
+
+The platform's architecture follows a modern decoupled design with a Django REST API backend and a Next.js React frontend. The backend serves as the ML engine, data processing pipeline, and API layer, while the frontend provides the interactive, animated user interface. Communication between the two layers is handled through RESTful API calls proxied through the Next.js server to avoid cross-origin issues.
+
+One of the distinguishing features of AutoML Studio is its AI-powered pipeline recommendation engine. When a user uploads a dataset, the system analyzes its statistical properties, column types, sample values, and the user's description, then sends this context to the OpenRouter API (powered by Google Gemini 2.0 Flash) to rank predefined ML pipelines from most to least suitable. Each pipeline is a curated combination of preprocessing steps, feature engineering techniques, and ML algorithms tailored for the specific task type.
+
+The ML engine supports over 20 algorithms spanning classification (Random Forest, XGBoost, Gradient Boosting, AdaBoost, Extra Trees, Logistic Regression, SVM, KNN, Decision Tree, Naive Bayes, MLP), regression (Random Forest, XGBoost, Gradient Boosting, Extra Trees, Linear Regression, Ridge, Lasso, ElasticNet, SVR, KNN, MLP), and clustering (K-Means, DBSCAN, Agglomerative, Mean Shift, OPTICS, Spectral, Birch, Gaussian Mixture). The system also includes a dedicated image clustering module that accepts ZIP archives of images and clusters them using computer vision techniques.
+
+Overall, AutoML Studio bridges the gap between the complexity of machine learning and the accessibility needs of non-technical users, while remaining flexible and powerful enough for experienced data scientists who want to rapidly prototype models.
+
+\section{Organisation Profile}
+Blueprint Technologies is a software development company specializing in enterprise-level solutions, particularly in the domain of Enterprise Resource Planning (ERP) systems. The organization operates through its platform BPTERP, which provides integrated business management solutions to streamline and automate various organizational processes.
+
+The company focuses on developing customized ERP systems that help businesses manage key operations such as finance, human resources, inventory, sales, and customer relationships within a unified framework. These solutions are designed to improve operational efficiency, enhance data visibility, and support effective decision-making.
+
+Blueprint Technologies follows a client-centric approach, ensuring that each solution is tailored to meet specific business requirements. By utilizing modern technologies, including cloud-based platforms and scalable architectures, the company delivers reliable and high-performance software systems.
+
+The organization also adopts industry-standard development practices such as Agile methodologies and version control systems to ensure efficient and collaborative development. Additionally, it emphasizes data security, system reliability, and performance optimization, which are essential for enterprise applications.
+
+Overall, Blueprint Technologies is committed to delivering innovative, scalable, and efficient software solutions, making it a dependable provider of enterprise technology services.
+
+\section{Scope and Availability}
+The scope of AutoML Studio extends across a wide range of domains where machine learning can deliver value but where users may lack the programming expertise to implement ML solutions. The platform's no-code approach makes it a versatile tool applicable to numerous use cases.
+
+In the domain of \textbf{business analytics and marketing}, organizations can use AutoML Studio to build classification models for customer churn prediction, regression models for sales forecasting, and clustering models for customer segmentation—all without employing a dedicated data science team. Small and medium enterprises benefit particularly, as the platform eliminates the need for expensive cloud ML services or in-house ML expertise.
+
+In \textbf{education and research}, students learning machine learning concepts can use the platform to experiment with different algorithms, preprocessing techniques, and hyperparameter configurations, gaining practical understanding of the ML pipeline. Researchers in non-CS domains (biology, social sciences, economics) can apply ML to their datasets without learning Python or R.
+
+The \textbf{healthcare} sector can leverage AutoML Studio for building predictive models on clinical data—classifying patient outcomes, predicting readmission rates, or clustering patient cohorts based on health indicators. The platform's support for multiple file formats and automated preprocessing makes it suitable for working with real-world medical datasets.
+
+In \textbf{agriculture and environmental science}, the platform can be used to analyze crop yield data, weather patterns, and soil characteristics through regression and clustering models. The image clustering module is particularly useful for categorizing plant disease images or satellite imagery.
+
+\textbf{Government and public sector} organizations can use AutoML Studio to analyze demographic data, public service utilization patterns, and policy impact metrics. The no-code interface makes it accessible to policy analysts who may not have technical backgrounds.
+
+The current version of the platform supports structured tabular datasets (CSV and Excel formats) as well as image datasets (ZIP archives) for clustering. The system handles datasets uploaded directly or imported from Google Drive via public share links. While the platform currently focuses on supervised and unsupervised learning tasks, the architecture is designed to support future extensions such as time-series forecasting, natural language processing, and deep learning models.
+
+The platform is designed as a self-hosted web application, providing organizations full control over their data and models without dependency on third-party cloud services. This is particularly important for organizations with strict data privacy requirements.
+
+\setcounter{chapter}{2}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 2}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{REQUIREMENTS AND ANALYSIS}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 2 \quad REQUIREMENTS AND ANALYSIS}
+\setcounter{section}{0}
+\section{Existing System}
+The current landscape of machine learning platforms and tools presents several categories of solutions, each with significant limitations that AutoML Studio aims to address.
+
+\textbf{Programming-Based ML Libraries:} The most common approach to building ML models involves using Python libraries such as scikit-learn, TensorFlow, PyTorch, and XGBoost directly through code. While these libraries are powerful and flexible, they require users to have strong programming skills, knowledge of data preprocessing, feature engineering, model selection, and hyperparameter tuning. Writing, debugging, and maintaining ML code is time-consuming and inaccessible to non-programmers.
+
+\textbf{Cloud AutoML Services:} Platforms like Google AutoML, Amazon SageMaker Autopilot, and Azure Automated ML provide automated model building capabilities but are tightly coupled with their respective cloud ecosystems. They incur significant costs for training and inference, require cloud accounts and configuration knowledge, and raise data privacy concerns as datasets must be uploaded to third-party servers.
+
+\textbf{Open-Source AutoML Tools:} Libraries such as Auto-sklearn, TPOT, H2O AutoML, and AutoGluon automate algorithm selection and hyperparameter optimization but still function as Python libraries. Users need to write code to load data, configure the AutoML run, and interpret results. These tools lack graphical user interfaces and guided workflows.
+
+\textbf{Low-Code ML Platforms:} Tools like RapidMiner, KNIME, and Orange provide visual interfaces for ML workflows through drag-and-drop operators. However, they often require installation of desktop applications, have steep learning curves for complex pipelines, and may require scripting for advanced configurations.
+
+\textbf{Jupyter Notebook Environments:} Platforms like Google Colab, Kaggle Kernels, and JupyterHub provide interactive coding environments optimized for data science. While they lower the barrier compared to raw IDEs, they still fundamentally require programming knowledge.
+
+\newpage
+The key limitations of existing systems can be summarized as:
+\begin{itemize}
+\item High programming expertise required for library-based and AutoML approaches
+\item Significant cost and vendor lock-in with cloud ML services
+\item Data privacy concerns with cloud-based solutions requiring data upload
+\item Lack of guided, step-by-step workflows in existing tools
+\item No AI-powered pipeline recommendation based on actual dataset analysis
+\item Complex installation and configuration for desktop-based tools
+\item No integrated solution covering the entire ML lifecycle from upload to export
+\item Limited support for image clustering in general-purpose ML platforms
+\item No automatic generation of deployment-ready inference scripts
+\end{itemize}
+These challenges highlight the need for a self-hosted, no-code, web-based platform that automates the complete ML pipeline while providing intelligent guidance through AI-powered recommendations.
+
+Therefore, the problem statement addressed by this project is:
+
+\textit{To design and develop an AI-powered, no-code machine learning platform that enables users without programming expertise to build, train, optimize, and deploy ML models through a guided web interface, supporting classification, regression, clustering, and image clustering tasks with AI-curated pipeline recommendations and automated hyperparameter optimization.}
+
+\section{Proposed System}
+To overcome the limitations of existing systems, the proposed solution is \textbf{AutoML Studio}, an AI-powered, no-code machine learning platform built as a modern web application with a decoupled frontend-backend architecture.
+
+The system follows a guided nine-step workflow designed to make the entire ML lifecycle accessible to users with no programming background:
+
+\begin{enumerate}
+    \item \textbf{Model Type Selection:} Users choose the ML task type—classification, regression, or clustering—which determines the available algorithms and pipelines.
+    \item \textbf{Dataset Upload:} Users upload datasets in CSV or Excel format, or import directly from Google Drive via a public share link. The system automatically profiles the dataset.
+    \item \textbf{Dataset Description:} Users provide a natural language description of their dataset and analysis goals, which is used by the AI recommendation engine.
+    \item \textbf{Automated Analysis:} The system performs statistical profiling including column types, missing values, feature distributions, class balance analysis, and summary statistics.
+    \item \textbf{AI Pipeline Recommendation:} The system sends dataset characteristics and sample data to a large language model (Google Gemini 2.0 Flash via OpenRouter API) which ranks predefined ML pipelines by suitability.
+    \item \textbf{Model Training:} Users select a pipeline and initiate training. Celery background workers execute training asynchronously, and the frontend polls for status updates.
+    \item \textbf{Hyperparameter Optimization:} Users can run Optuna-based Bayesian optimization on trained models to discover better hyperparameter configurations.
+    \item \textbf{Results Visualization:} The system displays comprehensive metrics including accuracy, precision, recall, F1-score, confusion matrices, feature importance, R-squared, MSE, MAE, and silhouette scores.
+    \item \textbf{Model Export:} Trained models can be downloaded as Python pickle (.pkl) files or as auto-generated Python inference scripts (.py) ready for production deployment.
+\end{enumerate}
+
+The system also includes a dedicated \textbf{image clustering module} that accepts ZIP archives of images, extracts visual features, applies clustering algorithms, and organizes images into cluster folders available for download.
+
+The key features of the proposed system include:
+\begin{itemize}
+\item No-code, guided workflow for the complete ML lifecycle
+\item Support for 20+ ML algorithms across classification, regression, and clustering
+\item AI-powered pipeline recommendation using LLM analysis of dataset characteristics
+\item Automated data preprocessing (scaling, encoding, imputation, SMOTE for class imbalance)
+\item Bayesian hyperparameter optimization via Optuna
+\item Asynchronous background training with Celery and Redis
+\item Image clustering with ZIP upload and organized cluster download
+\item Google Drive dataset import
+\item Model export as pickle files and auto-generated inference scripts
+\item Modern, animated React frontend with real-time status updates
+\item RESTful API architecture for extensibility
+\end{itemize}
+
+From a user perspective, the workflow of AutoML Studio is:
+\begin{itemize}
+\item User opens the web application
+\item Selects ML task type (classification/regression/clustering)
+\item Uploads dataset (file or Google Drive link)
+\item Describes the dataset and goals
+\item Reviews automated analysis results
+\item Selects an AI-recommended pipeline or configures a custom one
+\item Initiates training and monitors progress
+\item Optionally runs hyperparameter optimization
+\item Reviews metrics and visualizations
+\item Exports the trained model
+\end{itemize}
+
+The proposed system bridges the gap between ML complexity and user accessibility by combining intelligent automation with an intuitive guided interface.
+
+\section{Feasibility Study}
+A feasibility study evaluates whether the proposed system is practical and achievable within given constraints. The feasibility of AutoML Studio is analyzed from multiple perspectives.
+
+\textbf{1. Technical Feasibility}
+
+AutoML Studio uses well-established, mature technologies. The backend employs Python (one of the most widely used languages for ML), Django (a proven web framework), and scikit-learn (the industry-standard ML library). The frontend uses Next.js and React, which are among the most popular web development frameworks. All major dependencies—Django REST Framework, XGBoost, Optuna, Tailwind CSS, Framer Motion—are actively maintained open-source projects with large communities.
+
+The integration of the OpenRouter API for LLM-powered recommendations uses standard HTTP/JSON protocols, making it straightforward to implement. Celery with Redis for background task processing is a proven pattern used in production by companies like Instagram and Pinterest.
+
+The system's decoupled architecture (REST API backend + SPA frontend) follows modern web development best practices and enables independent scaling of frontend and backend components.
+
+\textbf{2. Economic Feasibility}
+
+The entire technology stack is open source and free to use. Python, Django, scikit-learn, Next.js, React, Tailwind CSS, and all other dependencies are available under permissive licenses. The development tools—Visual Studio Code, Git, and GitHub—are also free. The only external cost is the OpenRouter API for LLM recommendations, which offers free tiers and is competitively priced. SQLite eliminates database licensing costs during development. The system can be self-hosted, avoiding cloud ML service subscription fees.
+
+\textbf{3. Operational Feasibility}
+
+The platform is specifically designed for users without programming expertise. The guided, step-by-step workflow minimizes the learning curve. AI-powered pipeline recommendations remove the need for users to understand algorithm selection. Automated preprocessing eliminates manual data cleaning. The animated, modern UI provides clear feedback at every step. These design decisions ensure high operational feasibility across diverse user groups.
+
+\textbf{4. Schedule Feasibility}
+
+The project follows incremental development aligned with Agile methodology. The modular architecture allows parallel development of frontend pages and backend endpoints. Each step in the workflow can be developed, tested, and deployed independently. The use of established frameworks significantly reduces development time compared to building from scratch.
+
+\textbf{5. Legal and Ethical Feasibility}
+
+All technologies used are open source with permissive licenses. The system is self-hosted, so user data remains on the local server and is not transmitted to third parties (except for the AI recommendation feature which sends only dataset metadata, not raw data). API keys are configurable. The system implements CORS restrictions and follows Django's built-in security protections against CSRF, XSS, and SQL injection.
+
+\textbf{Conclusion:} The feasibility analysis confirms that AutoML Studio is technically achievable, economically viable, operationally practical, and schedulable within the project timeframe.
+
+\section{Conceptual Modelling}
+The conceptual model of AutoML Studio defines the key entities and their interactions within the system.
+
+The primary entities are:
+\begin{itemize}
+\item \textbf{Dataset} — Represents an uploaded data file with metadata
+\item \textbf{TrainingJob} — Represents a model training or optimization run
+\item \textbf{AI Pipeline Presets} — Predefined ML pipeline configurations
+\item \textbf{ML Engine} — The core processing module for training and optimization
+\item \textbf{OpenRouter API} — External LLM service for pipeline recommendations
+\item \textbf{Frontend Application} — The user interface layer
+\end{itemize}
+
+The \textbf{Dataset} entity is the entry point for all data-related operations. It stores the uploaded file along with profiling metadata—row count, column count, column names, data types, and the designated target column. Datasets support three task types: classification, regression, and clustering.
+
+The \textbf{TrainingJob} entity tracks the complete lifecycle of a model training run. It references a Dataset (or an image ZIP path for image clustering), records the pipeline configuration (preprocessing, feature engineering, algorithm, postprocessing), stores training metrics, optimization results, best hyperparameters, and the path to the saved model file. A Dataset can have multiple TrainingJobs.
+
+\textbf{AI Pipeline Presets} are statically defined combinations of preprocessing steps, feature engineering techniques, and ML algorithms curated for each task type. These presets are ranked by the OpenRouter LLM based on dataset characteristics.
+
+The conceptual workflow:
+\begin{itemize}
+\item User selects task type and uploads dataset
+\item System profiles the dataset and stores metadata
+\item User describes the dataset; system sends context to LLM for pipeline ranking
+\item User selects a pipeline (AI-recommended or custom)
+\item System creates a TrainingJob and dispatches to Celery worker
+\item ML Engine trains the model, computes metrics, saves the model file
+\item Results are stored in the TrainingJob record
+\item User can trigger Optuna optimization, creating updated results
+\item User exports the model as pickle or inference script
+\end{itemize}
+
+\section{Planning and Scheduling}
+AutoML Studio follows a structured development plan with clearly defined phases aligned with Agile methodology.
+
+\textbf{Project Planning}
+
+The planning phase involves:
+\begin{itemize}
+\item Requirement analysis and user story definition
+\item System architecture design (decoupled REST API + SPA)
+\item Technology stack selection (Django, Next.js, scikit-learn, etc.)
+\item Database schema design
+\item API endpoint specification
+\end{itemize}
+
+\textbf{Project Phases}
+
+\begin{itemize}
+\item \textbf{Phase 1: Foundation} — Django project setup, app creation, DRF configuration, Next.js scaffolding, Tailwind CSS setup, routing structure
+\item \textbf{Phase 2: Data Layer} — Dataset model, file upload API, Google Drive import, dataset profiling
+\item \textbf{Phase 3: ML Engine} — Algorithm implementations, preprocessing pipelines, training function, metrics computation
+\item \textbf{Phase 4: AI Integration} — OpenRouter API integration, pipeline ranking, recommendation endpoint
+\item \textbf{Phase 5: Training Pipeline} — Celery task setup, background training, status polling, result retrieval
+\item \textbf{Phase 6: Optimization} — Optuna integration, hyperparameter search spaces, Bayesian optimization
+\item \textbf{Phase 7: Frontend Build} — All nine workflow pages, animations, state management, API integration
+\item \textbf{Phase 8: Image Clustering} — ZIP upload, feature extraction, clustering, result packaging
+\item \textbf{Phase 9: Export and Polish} — Model export, inference script generation, UI refinement, testing
+\end{itemize}
+
+\textbf{Schedule:}
+\begin{itemize}
+\item Week 1--2: Requirement Analysis and System Design
+\item Week 3--4: Foundation and Data Layer (Phases 1--2)
+\item Week 5--7: ML Engine and AI Integration (Phases 3--4)
+\item Week 8--9: Training Pipeline and Optimization (Phases 5--6)
+\item Week 10--12: Frontend Build (Phase 7)
+\item Week 13--14: Image Clustering and Export (Phases 8--9)
+\item Week 15--16: Testing and Documentation
+\end{itemize}
+
+\textbf{Tools Used:}
+\begin{itemize}
+\item Visual Studio Code for development
+\item GitHub for version control
+\item Overleaf/LaTeX for documentation
+\item Chrome DevTools for frontend debugging
+\item Django admin for backend data inspection
+\end{itemize}
+
+\setcounter{chapter}{3}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 3}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{SYSTEM SPECIFICATION}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 3 \quad SYSTEM SPECIFICATION}
+\setcounter{section}{0}
+\section{Software and Hardware Requirements}
+
+The development and execution of AutoML Studio requires a well-defined combination of software and hardware resources. As a full-stack web application with a compute-intensive ML backend, the system balances accessibility with performance requirements.
+
+\subsection{Software Requirements}
+
+The software stack of AutoML Studio is divided into backend and frontend components, each utilizing specialized technologies.
+
+The \textbf{backend} is built with Python 3.10+, chosen for its dominance in the machine learning ecosystem and extensive library support. The Django 5.2 framework provides the web server, ORM, migration system, and admin interface. Django REST Framework (DRF) handles API serialization, request parsing, and response formatting. The ML engine is powered by scikit-learn for algorithm implementations and preprocessing utilities, XGBoost for gradient boosting models, Optuna for Bayesian hyperparameter optimization, pandas and NumPy for data manipulation, imbalanced-learn for SMOTE oversampling, and UMAP for dimensionality reduction in clustering visualization. Celery with Redis provides asynchronous task execution for non-blocking model training. Model persistence uses joblib, and Google Drive integration uses gdown. Cross-origin request handling is managed by django-cors-headers.
+
+The \textbf{frontend} is developed with Next.js 16 using the App Router architecture and React 19 with TypeScript for type-safe component development. Tailwind CSS v4 provides utility-first styling, and Framer Motion adds physics-based animations. The frontend communicates with the Django backend through a built-in API proxy route that forwards all \texttt{/api/*} requests.
+
+The complete software requirements are:
+
+\begin{itemize}
+    \item Operating System: Windows 10/11, Linux (Ubuntu 20.04+), or macOS
+    \item Programming Languages: Python 3.10+, TypeScript 5+, JavaScript (ES2020+)
+    \item Backend Framework: Django 5.2, Django REST Framework 3.15+
+    \item Frontend Framework: Next.js 16, React 19
+    \item ML Libraries: scikit-learn 1.4+, XGBoost 2.0+, Optuna 3.6+
+    \item Data Libraries: pandas 2.2+, NumPy 1.26+, imbalanced-learn 0.12+
+    \item Visualization: UMAP-learn 0.5+
+    \item Task Queue: Celery 5.3+ with Redis 5.0+
+    \item Styling: Tailwind CSS 4, Framer Motion 12+
+    \item Database: SQLite 3 (development), PostgreSQL (production)
+    \item Version Control: Git, GitHub
+    \item Development Tools: Visual Studio Code, Node.js 18+, npm
+    \item API Integration: OpenRouter API (Google Gemini 2.0 Flash)
+    \item Other: Pillow 10+, joblib 1.3+, gdown 5.1+, openpyxl 3.1+
+\end{itemize}
+
+\subsection{Hardware Requirements}
+
+The hardware requirements depend on the intended use case. For development and moderate dataset sizes:
+
+\begin{itemize}
+    \item Processor: Intel Core i5 or higher (recommended: i7 or Apple M-series)
+    \item RAM: Minimum 8 GB (recommended: 16 GB for large datasets)
+    \item Storage: At least 20 GB free disk space (for datasets, models, and dependencies)
+    \item Network: Stable internet connection (required for AI recommendations and Google Drive import)
+    \item Display: Standard monitor (minimum resolution 1366 $\times$ 768)
+    \item GPU: Optional (not required; all algorithms use CPU-based training)
+\end{itemize}
+
+For production deployment handling larger datasets and concurrent users, higher specifications are recommended: 32 GB RAM, SSD storage, and a multi-core processor for parallel Celery workers.
+
+\section{Functional Specifications}
+
+The functional specifications of AutoML Studio define the core operations and services provided through the platform's nine-step workflow.
+
+\textbf{Task Type Selection:} The system allows users to select from three ML task types—classification, regression, and clustering. This selection determines the available algorithms, evaluation metrics, and pipeline presets. An additional image clustering mode accepts image archives instead of tabular data.
+
+\textbf{Dataset Upload and Profiling:} Users can upload datasets as CSV or Excel files through a file picker or import from Google Drive using a public share link. Upon upload, the system automatically reads the file using pandas, extracts column names, data types, row count, feature count, and designates a target column. This metadata is stored in the Dataset model.
+
+\textbf{Dataset Description:} Users provide a free-text description of the dataset and their analysis goals. This description is stored and later used by the AI recommendation engine to understand the user's intent.
+
+\textbf{Automated Analysis:} The system computes comprehensive statistical profiles including summary statistics (mean, standard deviation, min, max) for numeric columns, missing value counts, and class balance distribution for classification tasks. This analysis is returned via the \texttt{/api/analyze/} endpoint.
+
+\textbf{AI Pipeline Recommendation:} The system constructs a detailed prompt containing dataset metadata, sample values, the user's description, and available pipeline configurations. This prompt is sent to the OpenRouter API (Google Gemini 2.0 Flash), which returns a ranked list of pipelines with explanations. The pipelines are displayed to users with AI-generated suitability reasons.
+
+\textbf{Model Training:} Users select a pipeline and configure training parameters. The system creates a TrainingJob record and dispatches training to a Celery background worker. The ML engine applies the selected preprocessing, feature engineering, and algorithm, trains the model, computes evaluation metrics, and saves the model file. The frontend polls \texttt{/api/result/} for status updates.
+
+\textbf{Hyperparameter Optimization:} After initial training, users can trigger Optuna-based optimization specifying the number of trials. Optuna uses Bayesian search (Tree-structured Parzen Estimator) to find optimal hyperparameters, updating the model and metrics upon completion.
+
+\textbf{Results Visualization:} The system displays task-specific metrics—accuracy, precision, recall, F1-score, and confusion matrix for classification; MSE, MAE, RMSE, and R-squared for regression; silhouette score for clustering. Feature importance rankings are provided for tree-based models.
+
+\textbf{Model Export:} Users can download trained models as Python pickle files or as auto-generated Python inference scripts containing all necessary code for loading the model and making predictions.
+
+\textbf{Image Clustering:} The image clustering module accepts ZIP archives, extracts images, computes visual features, applies clustering algorithms, and provides a downloadable ZIP with images organized into cluster folders.
+
+\textbf{Cache Management:} An administrative endpoint allows clearing all stored datasets, models, and training jobs to free disk space.
+
+\newpage
+\section{Tools and Platforms Used}
+
+\section{Development Environment}
+
+\textbf{Visual Studio Code:}
+Visual Studio Code is used as the primary development environment for building AutoML Studio. Its lightweight architecture, combined with extensions for Python, Django, TypeScript, Tailwind CSS, and ESLint, provides a comprehensive development experience. The integrated terminal, Git integration, and IntelliSense code completion significantly enhance productivity across both the Django backend and Next.js frontend.
+
+\vspace{0.4cm}
+
+\textbf{Python 3.10+:}
+Python serves as the core programming language for the backend, chosen for its dominant position in the machine learning ecosystem. Its clean syntax, extensive standard library, and rich ecosystem of ML packages make it the ideal language for implementing the platform's data processing, model training, and API logic.
+
+\vspace{0.4cm}
+
+\textbf{Django 5.2:}
+Django provides the web framework foundation, following the Model-View-Template (MVT) architecture. It handles request routing, database ORM operations, migrations, admin interface, and built-in security protections against CSRF, XSS, SQL injection, and clickjacking. Django's maturity and extensive documentation make it suitable for building robust, production-ready applications.
+
+\vspace{0.4cm}
+
+\textbf{Django REST Framework 3.15:}
+DRF extends Django with tools for building RESTful APIs, including serialization, request parsing (JSON, multi-part forms), authentication classes, and browsable API interfaces. All endpoint views use DRF's \texttt{@api\_view} decorators and \texttt{Response} objects for consistent JSON API responses.
+
+\vspace{0.4cm}
+
+\textbf{Next.js 16 (App Router):}
+Next.js provides the frontend framework with server-side rendering, file-based routing via the App Router, and built-in API routes used to proxy requests to the Django backend. The App Router's layout system enables shared navigation components (Navbar, Sidebar, Footer) across all workflow pages.
+
+\vspace{0.4cm}
+
+\textbf{React 19 with TypeScript:}
+React 19 provides the component-based UI architecture, while TypeScript adds static type checking for props, state, API responses, and context values. Type definitions for \texttt{PipelineConfig}, \texttt{TrainingResult}, \texttt{OptimizationResult}, and \texttt{DatasetColumn} ensure type safety across the application.
+
+\vspace{0.4cm}
+
+\textbf{Tailwind CSS v4:}
+Tailwind CSS provides utility-first styling, enabling rapid UI development without writing custom CSS. The dark-themed design of AutoML Studio is implemented entirely through Tailwind utility classes, ensuring consistency and maintainability.
+
+\vspace{0.4cm}
+
+\textbf{Framer Motion 12:}
+Framer Motion adds physics-based animations to React components using \texttt{motion.*} elements. Page transitions, sidebar animations, button hover effects, and loading states throughout the workflow use Framer Motion for a polished user experience.
+
+\vspace{0.4cm}
+
+\textbf{scikit-learn 1.4:}
+scikit-learn is the primary ML library providing implementations of classification, regression, and clustering algorithms, preprocessing utilities (scalers, encoders, imputers), feature selection methods (SelectKBest, RFE), dimensionality reduction (PCA), and evaluation metrics (accuracy, precision, recall, F1, MSE, MAE, R-squared, silhouette score).
+
+\vspace{0.4cm}
+
+\textbf{XGBoost 2.0:}
+XGBoost provides high-performance gradient boosting implementations for both classification (\texttt{XGBClassifier}) and regression (\texttt{XGBRegressor}), offering superior performance on many tabular datasets compared to scikit-learn's native boosting implementations.
+
+\vspace{0.4cm}
+
+\textbf{Optuna 3.6:}
+Optuna provides Bayesian hyperparameter optimization using the Tree-structured Parzen Estimator (TPE) algorithm. It efficiently searches the hyperparameter space by learning from previous trial results, achieving better configurations with fewer trials compared to grid or random search.
+
+\vspace{0.4cm}
+
+\textbf{pandas 2.2 and NumPy 1.26:}
+pandas provides DataFrame-based data manipulation for loading, cleaning, profiling, and transforming datasets. NumPy provides efficient numerical array operations underlying most ML computations. Together, they form the data processing foundation of the ML engine.
+
+\vspace{0.4cm}
+
+\textbf{imbalanced-learn 0.12 (SMOTE):}
+The imbalanced-learn library provides the SMOTE (Synthetic Minority Over-sampling Technique) algorithm for handling class imbalance in classification datasets. SMOTE generates synthetic samples for minority classes, improving model performance on imbalanced data.
+
+\vspace{0.4cm}
+
+\textbf{UMAP-learn 0.5:}
+UMAP (Uniform Manifold Approximation and Projection) provides non-linear dimensionality reduction for visualizing high-dimensional clustering results in 2D space. It preserves both local and global data structure better than alternatives like t-SNE.
+
+\vspace{0.4cm}
+
+\textbf{Celery 5.3 with Redis:}
+Celery provides distributed task queue functionality for executing model training and optimization as background tasks. Redis serves as the message broker, enabling non-blocking API responses while compute-intensive ML operations run asynchronously.
+
+\vspace{0.4cm}
+
+\textbf{SQLite / PostgreSQL:}
+SQLite serves as the development database—lightweight, zero-configuration, and suitable for single-user development. PostgreSQL is designated for production deployment, offering concurrent access, advanced query optimization, and better handling of JSON fields.
+
+\vspace{0.4cm}
+
+\textbf{joblib:}
+joblib provides efficient serialization (pickling) of trained ML models, including scikit-learn pipelines with fitted transformers. Models are saved as \texttt{.pkl} files containing the trained model, scaler, and feature names.
+
+\vspace{0.4cm}
+
+\textbf{gdown:}
+gdown enables downloading files from Google Drive using public share links. It handles Google's download confirmation redirects for large files, making it suitable for importing datasets stored on Google Drive.
+
+\vspace{0.4cm}
+
+\textbf{Pillow:}
+Pillow (PIL Fork) provides image processing capabilities for the image clustering module, including reading images from ZIP archives, resizing, and converting to arrays for feature extraction.
+
+\vspace{0.4cm}
+
+\textbf{openpyxl:}
+openpyxl enables reading and writing Excel (\texttt{.xlsx}) files, extending dataset upload support beyond CSV to include Microsoft Excel format.
+
+\vspace{0.4cm}
+
+\textbf{OpenRouter API (Google Gemini 2.0 Flash):}
+The OpenRouter API provides access to large language models for AI-powered pipeline recommendations. The system uses Google Gemini 2.0 Flash for analyzing dataset characteristics and ranking ML pipelines by suitability with natural language explanations.
+
+\vspace{0.4cm}
+
+\textbf{django-cors-headers:}
+This middleware manages Cross-Origin Resource Sharing (CORS), allowing the Next.js frontend (running on port 3000) to communicate with the Django backend (running on port 8000) during development.
+
+\vspace{0.4cm}
+
+\textbf{Git and GitHub:}
+Git provides distributed version control for tracking code changes, managing branches, and enabling collaboration. GitHub hosts the project repository and provides issue tracking, pull requests, and CI/CD integration.
+
+
+\setcounter{chapter}{4}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 4}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{SYSTEM DESIGN}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 4 \quad SYSTEM DESIGN}
+\setcounter{section}{0}
+
+
+\section{Module Descriptions}
+
+AutoML Studio follows a modular architecture where the system is divided into independent yet interconnected components. The backend is organized into Django apps, each responsible for a specific domain, while the frontend is structured around route-based pages corresponding to workflow steps.
+
+The major modules of the system are:
+
+\begin{itemize}
+    \item API Module (\texttt{api/})
+    \item Datasets Module (\texttt{datasets/})
+    \item Training Module (\texttt{training/})
+    \item Pipelines Module (\texttt{pipelines/})
+    \item Results Module (\texttt{results/})
+    \item Users Module (\texttt{users/})
+    \item Frontend Application (\texttt{frontend/})
+\end{itemize}
+
+The \textbf{API Module} (\texttt{api/}) serves as the central gateway for all HTTP requests from the frontend. It contains 18 API endpoints implemented as function-based views using DRF decorators. These endpoints handle dataset upload, Google Drive import, dataset description, column management, statistical analysis, AI-powered pipeline recommendation, model training, result retrieval, job cancellation, hyperparameter optimization, model export, cache management, image ZIP upload, image clustering, and cluster download. This module orchestrates operations across other modules.
+
+The \textbf{Datasets Module} (\texttt{datasets/}) manages dataset storage and metadata. The \texttt{Dataset} model stores the uploaded file, original filename, task type, description, profiling metadata (row count, feature count, column names, data types), and the designated target column. This module provides the data foundation that all other modules depend on.
+
+The \textbf{Training Module} (\texttt{training/}) is the computational core of the platform. It contains three critical components:
+\begin{itemize}
+    \item \texttt{models.py} — The \texttt{TrainingJob} model that tracks the entire lifecycle of a training run, including pipeline configuration, status transitions, metrics, optimization results, and model file path.
+    \item \texttt{ml\_engine.py} — The ML engine implementing all algorithm configurations, preprocessing pipelines, training logic, metrics computation, model saving, and Optuna optimization for both tabular and image data.
+    \item \texttt{tasks.py} — Celery task definitions for \texttt{run\_training\_task}, \texttt{run\_optimize\_task}, and \texttt{run\_image\_clustering\_task} that execute compute-intensive operations asynchronously.
+\end{itemize}
+
+The \textbf{Pipelines Module} (\texttt{pipelines/}) and \textbf{Results Module} (\texttt{results/}) are reserved for future expansion to store pipeline configurations and result visualizations as separate database entities.
+
+The \textbf{Users Module} (\texttt{users/}) is reserved for user authentication and profile management when multi-user support is implemented.
+
+The \textbf{Frontend Application} (\texttt{frontend/}) is a Next.js 16 application with the following structure:
+\begin{itemize}
+    \item \textbf{Route Pages:} 13 pages corresponding to workflow steps—Landing, About, Model Type, Upload, Describe, Analyze, Select Columns, Select Pipeline, Train, Optimize, Results, Export, and Image Clustering.
+    \item \textbf{Layout Components:} Navbar with animated navigation, Sidebar showing workflow progress, and Footer.
+    \item \textbf{State Management:} The \texttt{useDataset} hook provides global state via React Context, persisting dataset ID, task type, pipeline configuration, training results, and optimization results to localStorage.
+    \item \textbf{API Proxy:} A catch-all route (\texttt{api/[...path]/route.ts}) proxies all \texttt{/api/*} requests to the Django backend, handling all HTTP methods and headers.
+\end{itemize}
+
+\section{Data / Schema Design}
+
+The database schema of AutoML Studio is designed around two primary entities that capture the complete ML workflow—Datasets and Training Jobs.
+
+The \textbf{Dataset} entity represents uploaded data files and their metadata. Each dataset records the file reference, original filename, task type (classification, regression, or clustering), optional user description, profiling results (sample count, feature count, column names, data types), and the designated target column.
+
+The \textbf{TrainingJob} entity represents a single model training or optimization run. It maintains a foreign key to a Dataset (nullable for image clustering), records the complete pipeline configuration (preprocessing, feature engineering, algorithm, postprocessing), tracks status transitions (pending $\rightarrow$ training $\rightarrow$ completed/failed, or pending $\rightarrow$ training $\rightarrow$ completed $\rightarrow$ optimizing $\rightarrow$ completed), stores training metrics, optimization metrics, best hyperparameters, feature columns used, test split ratio, and the path to the saved model file.
+
+The relationships:
+\begin{itemize}
+    \item One Dataset can have multiple TrainingJobs (one-to-many)
+    \item A TrainingJob can exist without a Dataset (for image clustering, using \texttt{image\_zip\_path})
+    \item Deleting a Dataset cascades to delete associated TrainingJobs
+\end{itemize}
+
+\subsection*{Dataset Table}
+
+\begin{table}[H]
+\centering
+\caption{Dataset Table Structure}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} \\
+\hline
+id & INT (PK) & Auto-generated unique identifier \\
+file & FileField & Path to uploaded dataset file \\
+original\_filename & VARCHAR(255) & Original name of the uploaded file \\
+task\_type & VARCHAR(20) & classification, regression, or clustering \\
+description & TEXT (nullable) & User-provided dataset description \\
+n\_samples & INT (nullable) & Number of rows in the dataset \\
+n\_features & INT (nullable) & Number of columns in the dataset \\
+columns & JSONField (nullable) & List of column names \\
+dtypes & JSONField (nullable) & Dictionary of column name to data type \\
+target\_column & VARCHAR(100) (nullable) & Name of the target/label column \\
+uploaded\_at & DATETIME & Timestamp of upload \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{TrainingJob Table}
+
+\begin{table}[H]
+\centering
+\caption{TrainingJob Table Structure}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} \\
+\hline
+id & INT (PK) & Auto-generated unique identifier \\
+dataset\_id & INT (FK, nullable) & References Dataset(id) \\
+image\_zip\_path & VARCHAR(500) (nullable) & Path to image ZIP for image clustering \\
+pipeline\_type & VARCHAR(20) & 'ai', 'custom', or 'image' \\
+ai\_pipeline\_id & INT (nullable) & ID of selected AI pipeline preset \\
+preprocessing & VARCHAR(100) (nullable) & Preprocessing method name \\
+feature\_engineering & VARCHAR(100) (nullable) & Feature engineering method name \\
+algorithm & VARCHAR(100) & ML algorithm name \\
+postprocessing & VARCHAR(100) (nullable) & Postprocessing method name \\
+status & VARCHAR(20) & pending/training/optimizing/completed/failed \\
+feature\_columns & JSONField (nullable) & List of selected feature columns \\
+target\_column & VARCHAR(100) (nullable) & Target column used for training \\
+n\_clusters & INT & Number of clusters (default 3) \\
+hyperparams & JSONField (nullable) & Custom hyperparameters \\
+test\_size & FLOAT & Train/test split ratio (default 0.2) \\
+metrics & JSONField (nullable) & Training evaluation metrics \\
+best\_params & JSONField (nullable) & Best hyperparameters from optimization \\
+optimization\_metrics & JSONField (nullable) & Metrics after optimization \\
+model\_path & VARCHAR(500) (nullable) & Path to saved model .pkl file \\
+error\_message & TEXT (nullable) & Error description if training failed \\
+created\_at & DATETIME & Job creation timestamp \\
+completed\_at & DATETIME (nullable) & Job completion timestamp \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Procedural / Flow Design}
+
+The procedural design of AutoML Studio describes the data flow and processing sequence from user input to model export.
+
+The system workflow follows a linear pipeline with branching for image clustering:
+
+\begin{enumerate}
+    \item User opens the application and lands on the home page
+    \item User selects an ML task type (classification, regression, clustering, or image clustering)
+    \item \textbf{Tabular path:}
+    \begin{enumerate}
+        \item User uploads a CSV/Excel file or provides a Google Drive link
+        \item Backend validates and profiles the file, stores metadata in Dataset model
+        \item User provides a natural language description of the dataset
+        \item User navigates to the Analyze page; frontend calls \texttt{GET /api/analyze/<id>/}
+        \item Backend computes statistical profile and returns results
+        \item User optionally selects/changes the target column via \texttt{PATCH /api/columns/<id>/}
+        \item User navigates to Select Pipeline page; frontend calls \texttt{GET /api/recommend/<id>/}
+        \item Backend sends dataset context to OpenRouter API, receives ranked pipelines
+        \item User selects a pipeline and clicks Train; frontend calls \texttt{POST /api/train/}
+        \item Backend creates TrainingJob and dispatches Celery task
+        \item Frontend polls \texttt{GET /api/result/<job\_id>/} until status is completed
+        \item User optionally triggers optimization via \texttt{POST /api/optimize/}
+        \item Optuna runs background optimization; frontend polls for completion
+        \item User views final metrics on the Results page
+        \item User exports model via \texttt{GET /api/export/<job\_id>/pkl/} or \texttt{/py/}
+    \end{enumerate}
+    \item \textbf{Image clustering path:}
+    \begin{enumerate}
+        \item User uploads a ZIP archive via \texttt{POST /api/image-upload/} or provides a Google Drive link
+        \item User selects algorithm and cluster count, clicks Cluster
+        \item Backend creates TrainingJob and dispatches image clustering task
+        \item Frontend polls for completion and displays cluster samples
+        \item User downloads organized clusters via \texttt{GET /api/image-download/<job\_id>/}
+    \end{enumerate}
+\end{enumerate}
+
+Error handling is implemented at every stage: invalid file formats are rejected during upload, missing datasets trigger 404 responses, training failures are captured and stored in the TrainingJob's error message, and API timeouts fall back to static pipeline recommendations.
+
+\section{User Interface Design}
+
+The user interface of AutoML Studio is designed as a dark-themed, modern web application with a focus on guided workflow navigation and visual feedback at every step.
+
+The interface consists of three persistent layout components: the \textbf{Navbar} at the top providing navigation links and branding, the \textbf{Sidebar} on the left showing the nine workflow steps with visual indicators for completed, current, and upcoming steps, and the \textbf{Footer} at the bottom.
+
+Each workflow step has a dedicated page with a consistent structure: a title and description at the top, the main interactive content in the center, and navigation buttons (Previous/Next) at the bottom. Framer Motion animations provide smooth page transitions and component entrance effects.
+
+Key UI features include:
+\begin{itemize}
+    \item \textbf{Model Type page:} Animated cards for classification, regression, and clustering with icons and descriptions
+    \item \textbf{Upload page:} Drag-and-drop file upload area with Google Drive link input option
+    \item \textbf{Analyze page:} Statistical summary cards, column type indicators, class balance charts
+    \item \textbf{Select Pipeline page:} AI-recommended pipeline cards with ranking badges, suitability reasons, algorithm descriptions, and a ``Top Pick'' indicator
+    \item \textbf{Train page:} Real-time status indicator with animated progress, algorithm and pipeline details
+    \item \textbf{Results page:} Metric display cards, confusion matrix visualization, feature importance charts
+    \item \textbf{Export page:} Download buttons for pickle and Python script formats
+    \item \textbf{Image Clustering page:} ZIP upload, algorithm selector, cluster count control, cluster sample image grid
+\end{itemize}
+
+Responsive design is achieved through Tailwind CSS utility classes, ensuring the application works across desktop and tablet screen sizes. The dark color scheme reduces eye strain during extended analysis sessions.
+
+\setcounter{chapter}{5}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 5}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{DEVELOPMENT METHODOLOGY}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 5 \quad DEVELOPMENT METHODOLOGY}
+\setcounter{section}{0}
+\section{Project Roadmap}
+
+The development of AutoML Studio follows Agile methodology with iterative sprints, enabling continuous integration of features and feedback-driven refinement. The roadmap is designed to deliver incrementally functional versions of the platform at each phase.
+
+The first phase is \textbf{Project Initiation and Architecture Design}. During this phase, the problem statement is defined, the nine-step workflow is designed, and the decoupled architecture (Django REST API + Next.js SPA) is planned. Technology selection is finalized: Django 5.2 for the backend, Next.js 16 for the frontend, scikit-learn and XGBoost for ML, Optuna for optimization, and Celery with Redis for background processing. The database schema is designed with Dataset and TrainingJob as the core entities.
+
+The second phase is \textbf{Backend Foundation}. The Django project is scaffolded with six apps (api, datasets, pipelines, training, results, users). Django REST Framework and django-cors-headers are configured. The Dataset model is implemented with migrations. Core API endpoints for upload, profiling, and analysis are developed.
+
+The third phase is \textbf{ML Engine Development}. This is the most complex phase, involving the implementation of the complete ML engine:
+\begin{itemize}
+\item Sprint 1: Algorithm registry — 11 classifiers, 11 regressors, 8 clustering algorithms
+\item Sprint 2: Preprocessing pipeline — scalers, encoders, imputers, SMOTE integration
+\item Sprint 3: Feature engineering — PCA, PolynomialFeatures, SelectKBest, RFE
+\item Sprint 4: Training function — data loading, splitting, preprocessing, training, metrics computation, model saving
+\item Sprint 5: AI Pipeline presets — curated pipeline configurations for each task type
+\item Sprint 6: Optuna integration — hyperparameter search space definitions, optimization function
+\end{itemize}
+
+The fourth phase is \textbf{AI Integration}. The OpenRouter API is integrated for LLM-powered pipeline recommendations. A prompt engineering system is developed that formats dataset metadata, sample values, and available pipelines into structured prompts for Google Gemini 2.0 Flash. Response parsing and fallback mechanisms are implemented.
+
+The fifth phase is \textbf{Frontend Development}. All 13 route pages are built using React components with TypeScript. The \texttt{useDataset} context hook is implemented for global state management with localStorage persistence. The Navbar, Sidebar, and Footer layout components are created. Framer Motion animations are added throughout the interface. The API proxy route is configured to forward requests to Django.
+
+The sixth phase is \textbf{Async Training Pipeline}. Celery is configured with Redis as the message broker. Training and optimization tasks are converted to background Celery tasks. The frontend implements polling mechanisms to track job status in real time.
+
+The seventh phase is \textbf{Image Clustering Module}. ZIP upload, image feature extraction, clustering with multiple algorithms, result visualization with sample images, and organized cluster download are implemented.
+
+The eighth phase is \textbf{Export and Production Readiness}. Model export as pickle files and auto-generated Python inference scripts is implemented. Google Drive import is added. Cache management for clearing stored data is developed. The system is tested end-to-end.
+
+The roadmap evolves throughout development based on testing feedback and feature prioritization. Agile methodology allows the team to adapt quickly to discovered requirements and technical challenges.
+
+\section{User Stories}
+
+User stories define system functionality from the end user's perspective:
+
+\begin{itemize}
+\item As a business analyst, I want to upload a CSV file so that I can analyze my sales data without coding.
+\item As a user, I want to select the type of ML task so that the system shows me relevant algorithms and pipelines.
+\item As a user, I want the system to automatically analyze my dataset so that I understand its structure before training.
+\item As a non-technical user, I want AI-recommended pipelines so that I don't need to understand algorithm selection.
+\item As a user, I want to see training progress in real time so that I know the system is working.
+\item As a user, I want to optimize my model's hyperparameters so that I get the best possible performance.
+\item As a user, I want to view training metrics so that I can evaluate model quality.
+\item As a user, I want to export my model as a pickle file so that I can deploy it in production.
+\item As a user, I want to download an inference script so that I can immediately use my model without writing code.
+\item As a user, I want to import datasets from Google Drive so that I don't need to download files first.
+\item As a researcher, I want to cluster images by visual similarity so that I can organize large image collections.
+\item As a user, I want to describe my dataset goals so that the AI gives better pipeline recommendations.
+\item As a user, I want to select specific columns for training so that I can control feature selection.
+\item As a user, I want to cancel a running training job so that I can restart with different settings.
+\end{itemize}
+
+Sprint planning allocates user stories to specific sprints based on priority and dependency. For example, the ``Upload dataset'' story is scheduled before ``AI pipeline recommendation'' since recommendation depends on having a dataset.
+
+Each sprint (1--2 weeks) includes development, unit testing, integration testing, and sprint review. Daily progress is tracked, and retrospectives identify improvement areas.
+
+\section{Test Plan}
+
+Testing is integrated into every sprint following Agile methodology. The test plan validates all modules including dataset management, ML engine, API endpoints, AI integration, and frontend interactions.
+
+The testing objectives are:
+\begin{itemize}
+    \item Verify correct file upload and profiling for CSV and Excel formats
+    \item Ensure ML algorithms produce valid metrics for all supported task types
+    \item Validate API endpoint input validation, error handling, and response formats
+    \item Confirm Celery background tasks execute and update job status correctly
+    \item Verify Optuna optimization improves or maintains model performance
+    \item Test AI pipeline recommendation with various dataset types
+    \item Validate model export produces functional pickle files and inference scripts
+    \item Ensure image clustering correctly processes ZIP archives and organizes clusters
+    \item Confirm frontend state management persists across page navigations
+    \item Verify error recovery — invalid files, failed training, API timeouts
+\end{itemize}
+
+\textbf{Types of Testing}
+
+\textbf{Unit Testing:}
+Individual functions and methods are tested in isolation. This includes testing the ML engine's preprocessing functions, algorithm initialization, metrics computation, and Optuna search space generation. Each algorithm is tested with synthetic datasets to verify it produces valid predictions and metrics.
+
+\vspace{0.3cm}
+
+\textbf{Integration Testing:}
+Module interactions are tested to ensure data flows correctly between components. This includes testing the complete path from API endpoint to Celery task to ML engine to model save. Integration tests verify that Dataset and TrainingJob models are correctly created, updated, and linked.
+
+\vspace{0.3cm}
+
+\textbf{System Testing:}
+The complete nine-step workflow is tested end-to-end, from file upload through model export. This includes testing with real-world datasets of varying sizes, formats, and characteristics.
+
+\vspace{0.3cm}
+
+\textbf{API Testing:}
+Each of the 18 API endpoints is tested for correct request handling, input validation, error responses, and expected output format. Edge cases include uploading non-CSV files, referencing non-existent datasets, and sending malformed JSON.
+
+\vspace{0.3cm}
+
+\textbf{Performance Testing:}
+The system is tested with datasets of varying sizes (100 rows to 100,000+ rows) to evaluate training time, memory usage, and response latency. Celery task queue performance under concurrent requests is evaluated.
+
+\vspace{0.3cm}
+
+\textbf{Security Testing:}
+Input validation is tested to prevent path traversal in file uploads, SQL injection via API parameters, and XSS through dataset descriptions. CORS configuration is verified to restrict access to authorized origins.
+
+\vspace{0.3cm}
+
+\textbf{Test Cases}
+
+\begin{table}[h]
+\centering
+\caption{Sample Test Cases}
+\begin{tabular}{|c|p{3cm}|p{3cm}|p{3cm}|c|}
+\hline
+\textbf{Test ID} & \textbf{Description} & \textbf{Input} & \textbf{Expected Output} & \textbf{Status} \\
+\hline
+TC01 & CSV Upload & Valid CSV file & Dataset created with metadata & Pass \\
+\hline
+TC02 & Excel Upload & Valid .xlsx file & Dataset created with metadata & Pass \\
+\hline
+TC03 & Invalid File & .txt file upload & Error: ``Only CSV and Excel'' & Pass \\
+\hline
+TC04 & Google Drive Import & Public drive link & Dataset downloaded and profiled & Pass \\
+\hline
+TC05 & Dataset Analysis & Valid dataset ID & Statistical profile returned & Pass \\
+\hline
+TC06 & Pipeline Recommend & Dataset with desc. & Ranked pipeline list & Pass \\
+\hline
+TC07 & Classification Train & RF on iris-like data & Accuracy metrics returned & Pass \\
+\hline
+TC08 & Regression Train & Ridge on numeric data & MSE, R2 metrics returned & Pass \\
+\hline
+TC09 & Clustering Train & KMeans on data & Silhouette score returned & Pass \\
+\hline
+TC10 & Optuna Optimize & Completed job, 20 trials & Best params updated & Pass \\
+\hline
+TC11 & Export pkl & Completed job ID & .pkl file downloaded & Pass \\
+\hline
+TC12 & Export script & Completed job ID & .py file downloaded & Pass \\
+\hline
+TC13 & Image ZIP Upload & Valid ZIP with images & zip\_path returned & Pass \\
+\hline
+TC14 & Image Clustering & ZIP + KMeans + k=3 & Clustered results & Pass \\
+\hline
+TC15 & Cancel Job & Pending job ID & Status set to cancelled & Pass \\
+\hline
+TC16 & Clear Cache & POST request & All data deleted & Pass \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Test Execution Strategy}
+
+Testing is carried out continuously within each sprint:
+\begin{itemize}
+    \item Development of features
+    \item Unit testing of new functions
+    \item Integration testing of module interactions
+    \item API endpoint testing with various inputs
+    \item Frontend workflow testing
+    \item Bug fixing and regression testing
+\end{itemize}
+
+\textbf{Test Schedule}
+\begin{itemize}
+    \item Sprint 1--2: Dataset upload and profiling tests
+    \item Sprint 3--4: ML engine algorithm tests
+    \item Sprint 5: AI recommendation and Celery task tests
+    \item Sprint 6: Optimization and export tests
+    \item Sprint 7: Image clustering and end-to-end tests
+    \item Sprint 8: Performance, security, and regression tests
+\end{itemize}
+
+\setcounter{chapter}{6}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 6}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{IMPLEMENTATION AND TESTING}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 6 \quad IMPLEMENTATION AND TESTING}
+\setcounter{section}{0}
+
+\section{Implementation Procedures}
+
+The implementation of AutoML Studio transforms the system design into a fully functional, integrated application. The implementation follows an iterative approach aligned with Agile methodology, with each sprint delivering testable functionality.
+
+\textbf{Development Environment Setup:}
+The development environment is configured with Python 3.10+ and Node.js 18+. The Django project is initialized with the command \texttt{django-admin startproject mlplatform}, and six Django apps are created: \texttt{api}, \texttt{datasets}, \texttt{pipelines}, \texttt{training}, \texttt{results}, and \texttt{users}. The Next.js frontend is scaffolded with \texttt{npx create-next-app@latest frontend} with TypeScript and Tailwind CSS enabled. Dependencies are installed via \texttt{pip install -r requirements.txt} and \texttt{npm install}.
+
+\textbf{Backend Implementation:}
+The backend implementation begins with configuring Django settings. The \texttt{settings.py} file registers all installed apps including \texttt{rest\_framework}, \texttt{corsheaders}, and \texttt{django\_celery\_results}. CORS is configured to allow requests from \texttt{localhost:3000}. The REST framework is configured with \texttt{AllowAny} permissions and session/basic authentication classes.
+
+The \texttt{Dataset} model is implemented in \texttt{datasets/models.py} with fields for file storage, metadata, and profiling results. The model uses Django's \texttt{FileField} for file management and \texttt{JSONField} for storing column lists and data type mappings. Database migrations are created and applied using \texttt{python manage.py makemigrations} and \texttt{python manage.py migrate}.
+
+The \texttt{TrainingJob} model is implemented in \texttt{training/models.py} with comprehensive fields tracking the complete training lifecycle. Foreign key relationships are established with the Dataset model, and nullable fields accommodate image clustering jobs that don't have associated datasets.
+
+The ML engine (\texttt{training/ml\_engine.py}) is the most complex implementation component. It begins by importing all required algorithms from scikit-learn, XGBoost, and imbalanced-learn, with try/except blocks for optional dependencies. The engine defines:
+\begin{itemize}
+    \item Algorithm registries mapping string names to scikit-learn class constructors for 11 classifiers, 11 regressors, and 8 clustering algorithms
+    \item AI Pipeline presets — 6 curated pipelines each for classification, regression, and clustering
+    \item A \texttt{train()} function that loads the dataset, applies preprocessing, splits data, trains the model, computes metrics, and saves the model using joblib
+    \item An \texttt{optimize()} function that defines Optuna search spaces for each algorithm and runs Bayesian optimization
+\end{itemize}
+
+The API views (\texttt{api/views.py}) implement 18 endpoints using DRF's \texttt{@api\_view} and \texttt{@parser\_classes} decorators. Key implementations include:
+\begin{itemize}
+    \item \texttt{upload\_dataset}: Accepts multipart file uploads, reads with pandas, profiles, and saves
+    \item \texttt{upload\_drive\_csv}: Extracts Google Drive file IDs from URLs, downloads with gdown, processes identically to direct upload
+    \item \texttt{analyze\_dataset}: Computes per-column statistics, missing values, and class balance
+    \item \texttt{recommend\_pipelines}: Constructs LLM prompts, calls OpenRouter API, parses JSON responses, merges AI rankings with pipeline data
+    \item \texttt{train\_model}: Resolves pipeline configuration, creates TrainingJob, dispatches Celery task
+    \item \texttt{optimize\_model}: Validates job state, dispatches Optuna optimization task
+    \item \texttt{export\_model}: Serves pickle files or generates Python inference scripts
+    \item \texttt{start\_image\_clustering}: Validates parameters, creates job, dispatches image clustering task
+\end{itemize}
+
+Celery tasks (\texttt{training/tasks.py}) wrap the ML engine functions in \texttt{@shared\_task} decorators, enabling asynchronous execution. Tasks update the TrainingJob status throughout execution (pending → training → completed/failed) and handle exceptions gracefully.
+
+\textbf{Frontend Implementation:}
+The Next.js frontend implements 13 route pages under \texttt{frontend/src/app/(root)/}. Each page is a React component using TypeScript with Tailwind CSS styling and Framer Motion animations.
+
+The \texttt{useDataset} hook (\texttt{frontend/src/app/lib/hooks/useDataset.tsx}) provides global state management through React Context. It persists dataset ID, task type, pipeline configuration, training results, and optimization results to localStorage, ensuring state survives page navigations and browser refreshes.
+
+The API proxy (\texttt{frontend/src/app/api/[...path]/route.ts}) implements a catch-all route handler that forwards all HTTP methods (GET, POST, PATCH, DELETE) to the Django backend at \texttt{localhost:8000}, handling headers and request body buffering.
+
+Layout components (Navbar, Sidebar, Footer) are implemented as shared components wrapped around route pages via \texttt{layout.tsx}, providing consistent navigation and workflow progress indicators.
+
+\textbf{Integration and Deployment:}
+The backend and frontend are started simultaneously using \texttt{python manage.py runserver} (port 8000) and \texttt{npm run dev} (port 3000). The \texttt{start.ps1} PowerShell script automates starting both servers. Django's CORS middleware enables cross-origin communication between the two servers.
+
+\section{Testing Methods and Results}
+
+Testing is integrated into every sprint of AutoML Studio's development. The testing process validates all system components including dataset management, the ML engine, API endpoints, AI integration, Celery background tasks, and frontend interactions.
+
+\textbf{Unit Testing:}
+The ML engine is the primary target of unit testing. Each of the 30+ supported algorithms is tested with synthetic datasets generated using scikit-learn's \texttt{make\_classification}, \texttt{make\_regression}, and \texttt{make\_blobs} functions. Tests verify:
+\begin{itemize}
+    \item Algorithm initialization with default parameters
+    \item Preprocessing pipeline application (StandardScaler, MinMaxScaler, RobustScaler)
+    \item Feature engineering steps (PCA dimensionality matches expectations, SMOTE generates synthetic samples)
+    \item Metrics computation returns valid numerical values
+    \item Model serialization and deserialization via joblib
+    \item Optuna search spaces are valid for each algorithm
+\end{itemize}
+
+\textbf{Integration Testing:}
+Integration tests verify data flow across modules:
+\begin{itemize}
+    \item File upload $\rightarrow$ Dataset creation $\rightarrow$ profiling metadata stored correctly
+    \item Train endpoint $\rightarrow$ TrainingJob creation $\rightarrow$ Celery task dispatch $\rightarrow$ ML engine execution $\rightarrow$ metrics storage $\rightarrow$ model file saved
+    \item Optimize endpoint $\rightarrow$ Optuna execution $\rightarrow$ best params and metrics updated in database
+    \item Recommend endpoint $\rightarrow$ OpenRouter API call $\rightarrow$ response parsing $\rightarrow$ enriched pipeline list returned
+\end{itemize}
+
+\textbf{API Testing:}
+Each of the 18 endpoints is tested with valid inputs, invalid inputs, and edge cases. Key validations include:
+\begin{itemize}
+    \item Upload rejects non-CSV/Excel files with appropriate error messages
+    \item Analysis returns 404 for non-existent dataset IDs
+    \item Training validates required fields (dataset\_id, pipeline configuration)
+    \item Export returns 404 when model file is missing
+    \item Google Drive import handles invalid URLs, private links, and non-file links
+\end{itemize}
+
+\textbf{System Testing Results:}
+End-to-end testing with real-world datasets demonstrates:
+\begin{itemize}
+    \item The Iris dataset (150 rows, 4 features, classification): Random Forest achieves 96\% accuracy
+    \item The Boston Housing dataset (506 rows, 13 features, regression): XGBoost achieves R² = 0.89
+    \item Synthetic blob data (1000 rows, 3 features, clustering): KMeans achieves silhouette score 0.72
+    \item Image clustering with 100+ images: Successfully clusters and organizes into downloadable ZIP
+\end{itemize}
+
+\textbf{Performance Testing:}
+Performance measurements across dataset sizes:
+\begin{itemize}
+    \item 1,000 rows: Training completes in under 5 seconds for most algorithms
+    \item 10,000 rows: Training completes in 10--30 seconds depending on algorithm complexity
+    \item 50,000+ rows: XGBoost and tree ensembles complete in 1--3 minutes; SVM may require longer
+    \item Optuna optimization (20 trials): Typically completes in 2--5 minutes for moderate datasets
+\end{itemize}
+
+\textbf{Security Testing:}
+Security validations confirm:
+\begin{itemize}
+    \item File upload rejects files that don't match allowed extensions
+    \item CORS configuration restricts API access to configured origins
+    \item Django's built-in CSRF, XSS, and SQL injection protections are active
+    \item API keys are not exposed in frontend responses
+\end{itemize}
+
+Minor issues identified during testing—such as edge cases in handling datasets with all-null columns, timeout handling for LLM API calls, and memory management for very large datasets—were addressed through iterative fixes and retesting.
+
+The overall testing results demonstrate that AutoML Studio is reliable, efficient, and secure across all supported task types, algorithms, and dataset sizes.
+
+
+\setcounter{chapter}{7}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 7}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{CONCLUSION}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 7 \quad CONCLUSION}
+\setcounter{section}{0}
+
+
+\section{Summary}
+
+AutoML Studio was developed as an AI-powered, no-code machine learning platform that enables users to build, train, optimize, and export ML models through a guided web interface without writing any code. The system successfully implements a nine-step workflow covering model type selection, dataset upload, description, automated analysis, AI-powered pipeline recommendation, model training, hyperparameter optimization, results visualization, and model export.
+
+The backend, built with Django 5.2 and Django REST Framework, provides 18 RESTful API endpoints serving the complete ML lifecycle. The ML engine, powered by scikit-learn, XGBoost, and Optuna, supports over 20 algorithms across classification, regression, and clustering tasks. AI-powered pipeline recommendations leverage the OpenRouter API with Google Gemini 2.0 Flash to analyze dataset characteristics and rank predefined pipelines by suitability. Asynchronous model training via Celery with Redis ensures non-blocking user experience during compute-intensive operations.
+
+The frontend, developed with Next.js 16, React 19, TypeScript, Tailwind CSS v4, and Framer Motion, provides a modern, animated, dark-themed interface with global state management via React Context and localStorage persistence. The API proxy architecture eliminates cross-origin issues while maintaining a clean separation of frontend and backend concerns.
+
+Key technical achievements include:
+\begin{itemize}
+    \item Support for 11 classification, 11 regression, and 8 clustering algorithms
+    \item 18 curated AI pipeline presets (6 per task type) with LLM-powered ranking
+    \item Bayesian hyperparameter optimization via Optuna with algorithm-specific search spaces
+    \item Automated data preprocessing including scaling, encoding, imputation, and SMOTE
+    \item Image clustering module supporting 8 clustering algorithms on image archives
+    \item Model export as pickle files and auto-generated Python inference scripts
+    \item Google Drive dataset import via public share links
+    \item Real-time training status updates through API polling
+\end{itemize}
+
+The platform demonstrates that the complete ML lifecycle can be automated and made accessible through thoughtful UI/UX design, intelligent automation, and modern web technologies. Testing validates reliable performance across diverse datasets, algorithms, and use cases.
+
+\section{Limitations}
+
+Despite successful implementation, AutoML Studio has several limitations:
+
+\textbf{Single-User Design:}
+The current version does not implement user authentication or multi-user support. All datasets and models are shared in a single workspace. Adding user accounts, role-based access, and data isolation is required for production deployment.
+
+\vspace{0.3cm}
+
+\textbf{CPU-Only Training:}
+All ML computations run on CPU. GPU acceleration for neural network training (MLP) and large-scale XGBoost operations is not currently supported, limiting performance on very large datasets.
+
+\vspace{0.3cm}
+
+\textbf{No Deep Learning Support:}
+The platform supports only classical ML algorithms from scikit-learn and XGBoost. Deep learning models (CNNs, RNNs, Transformers) using TensorFlow or PyTorch are not currently available.
+
+\vspace{0.3cm}
+
+\textbf{Limited Data Format Support:}
+Only CSV and Excel files are supported for tabular data. JSON, Parquet, SQL database connections, and real-time data streams are not yet implemented.
+
+\vspace{0.3cm}
+
+\textbf{External API Dependency:}
+The AI pipeline recommendation feature depends on the OpenRouter API. Network issues, API rate limits, or service downtime affect this functionality, though a static fallback is provided.
+
+\vspace{0.3cm}
+
+\textbf{No Feature Engineering UI:}
+While the system supports automated preprocessing, users cannot perform manual feature engineering (creating new columns, applying transformations, handling outliers) through the interface.
+
+\vspace{0.3cm}
+
+\textbf{SQLite Scalability:}
+SQLite, used for development, does not support concurrent writes from multiple Celery workers efficiently. Production deployment requires migration to PostgreSQL.
+
+\vspace{0.3cm}
+
+\textbf{No Model Versioning:}
+The system does not maintain version history of models. Retraining replaces previous results without maintaining a comparison history.
+
+\section{Future Scope}
+
+AutoML Studio has significant potential for future enhancement:
+
+\textbf{Deep Learning Integration:}
+Adding TensorFlow and PyTorch support would enable training CNNs for image classification, RNNs/LSTMs for time-series forecasting, and Transformer models for NLP tasks, dramatically expanding the platform's applicability.
+
+\vspace{0.3cm}
+
+\textbf{Multi-User Authentication:}
+Implementing user registration, login, role-based access control, and data isolation would make the platform suitable for team and enterprise use.
+
+\vspace{0.3cm}
+
+\textbf{Cloud Deployment:}
+Deploying on cloud platforms (AWS, GCP, Azure) with container orchestration (Docker, Kubernetes) would enable auto-scaling, GPU-accelerated training, and multi-tenant architecture.
+
+\vspace{0.3cm}
+
+\textbf{Advanced Feature Engineering:}
+A visual feature engineering interface allowing users to create derived features, apply custom transformations, handle outliers, and encode categorical variables interactively.
+
+\vspace{0.3cm}
+
+\textbf{Real-Time Data Processing:}
+Supporting real-time data streams and incremental learning would enable the platform to process continuously arriving data.
+
+\vspace{0.3cm}
+
+\textbf{Model Monitoring and MLOps:}
+Adding model performance monitoring, data drift detection, automated retraining triggers, and CI/CD pipelines for ML would support production ML operations.
+
+\vspace{0.3cm}
+
+\textbf{ONNX Export:}
+Supporting ONNX (Open Neural Network Exchange) format would enable cross-platform model deployment across different frameworks and hardware.
+
+\vspace{0.3cm}
+
+\textbf{NLP and Time-Series Modules:}
+Dedicated modules for text classification, sentiment analysis, named entity recognition, and time-series forecasting would expand the platform's domain coverage.
+
+\vspace{0.3cm}
+
+\textbf{Collaborative Features:}
+Shared workspaces, model comparison dashboards, team annotations, and experiment tracking would support collaborative data science workflows.
+
+\vspace{0.3cm}
+
+\textbf{Mobile Application:}
+A mobile companion app for monitoring training jobs, viewing results, and managing datasets on the go.
+
+\vspace{0.5cm}
+
+AutoML Studio's modular architecture and API-first design make these enhancements achievable through incremental development. The platform is positioned to evolve into a comprehensive, enterprise-grade AutoML solution.
+
+
+%============================================================
+
+% ===================== APPENDIX =====================
+\clearpage
+
+% ---- Chapter as Appendix ----
+\setcounter{chapter}{8}
+\setcounter{section}{0}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 8}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{APPENDIX}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 8 \quad APPENDIX}
+
+% Apply header & footer style
+\pagestyle{maincontent}
+
+
+\section{Sample Code / Queries}
+
+GitHub URL : https://github.com/AswinSanosh/MCAFINAL
+
+\vspace{0.5cm}
+
+\textbf{ML Engine — Training Function (training/ml\_engine.py):}
+\lstinputlisting[language=Python, caption=ML Engine — Core Training Logic]{ml_engine.py}
+
+\vspace{0.5cm}
+
+\textbf{API Views — Core Endpoints (api/views.py):}
+\lstinputlisting[language=Python, caption=API View Functions]{views.py}
+
+\vspace{0.5cm}
+
+\textbf{Database Models — Dataset (datasets/models.py):}
+\lstinputlisting[language=Python, caption=Dataset Model]{models.py}
+
+\vspace{0.5cm}
+
+\textbf{URL Configuration (api/urls.py):}
+\lstinputlisting[language=Python, caption=API URL Routing]{urls.py}
+
+\vspace{0.5cm}
+
+\textbf{Django Settings (mlplatform/settings.py):}
+\lstinputlisting[language=Python, caption=Project Settings]{settings.py}
+
+\vspace{0.5cm}
+
+\newpage
+\section{User Interface Screenshots — AutoML Studio}
+
+The user interface of AutoML Studio is designed as a dark-themed, modern web application with guided workflow navigation and animated transitions.\\
+
+\setlength{\floatsep}{10pt}
+\setlength{\textfloatsep}{10pt}
+\setlength{\intextsep}{10pt}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{1.png}
+\caption{Landing Page — AutoML Studio}
+URL : http://localhost:3000/
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{2.png}
+\caption{Model Type Selection Page}
+URL : http://localhost:3000/model-type
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{3.png}
+\caption{Dataset Upload Page}
+URL : http://localhost:3000/upload
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{4.png}
+\caption{Dataset Description Page}
+URL : http://localhost:3000/describe
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{5.png}
+\caption{Automated Analysis Page}
+URL : http://localhost:3000/analyze
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{6.png}
+\caption{AI Pipeline Recommendation Page}
+URL : http://localhost:3000/select-pipeline
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{7.png}
+\caption{Model Training Page}
+URL : http://localhost:3000/train
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{8.png}
+\caption{Hyperparameter Optimization Page}
+URL : http://localhost:3000/optimize
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{9.png}
+\caption{Results and Metrics Page}
+URL : http://localhost:3000/results
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{10.png}
+\caption{Model Export Page}
+URL : http://localhost:3000/export
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{11.png}
+\caption{Image Clustering Page}
+URL : http://localhost:3000/image-clustering
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{12.png}
+\caption{Image Clustering Results}
+URL : http://localhost:3000/image-clustering
+\end{figure}
+
+
+%================== CHAPTER 9 : REFERENCES ==================
+
+\setcounter{chapter}{9}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 9}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{REFERENCES}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 9 \quad REFERENCES}
+
+\setcounter{section}{0}
+
+\begin{thebibliography}{20}
+
+\bibitem{ref1}
+F. Pedregosa et al., ``Scikit-learn: Machine Learning in Python,''
+\textit{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+
+\bibitem{ref2}
+T. Chen and C. Guestrin, ``XGBoost: A Scalable Tree Boosting System,''
+\textit{Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}, pp. 785--794, 2016.
+
+\bibitem{ref3}
+T. Akiba, S. Sano, T. Yanase, T. Ohta, and M. Koyama, ``Optuna: A Next-generation Hyperparameter Optimization Framework,''
+\textit{Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}, pp. 2623--2631, 2019.
+
+\bibitem{ref4}
+W. McKinney, ``Data Structures for Statistical Computing in Python,''
+\textit{Proceedings of the 9th Python in Science Conference}, pp. 51--56, 2010.
+
+\bibitem{ref5}
+Django Software Foundation, ``Django Web Framework Documentation,''
+\textit{Django Project}, 2024. [Online]. Available: https://www.djangoproject.com/
+
+\bibitem{ref6}
+Vercel Inc., ``Next.js — The React Framework for Production,''
+\textit{Next.js Documentation}, 2024. [Online]. Available: https://nextjs.org/
+
+\bibitem{ref7}
+N. V. Chawla, K. W. Bowyer, L. O. Hall, and W. P. Kegelmeyer, ``SMOTE: Synthetic Minority Over-sampling Technique,''
+\textit{Journal of Artificial Intelligence Research}, vol. 16, pp. 321--357, 2002.
+
+\bibitem{ref8}
+L. McInnes, J. Healy, and J. Melville, ``UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction,''
+\textit{arXiv preprint arXiv:1802.03426}, 2018.
+
+\bibitem{ref9}
+M. Feurer, A. Klein, K. Eggensperger, J. T. Springenberg, M. Blum, and F. Hutter, ``Efficient and Robust Automated Machine Learning,''
+\textit{Advances in Neural Information Processing Systems}, vol. 28, pp. 2962--2970, 2015.
+
+\bibitem{ref10}
+C. R. Harris et al., ``Array Programming with NumPy,''
+\textit{Nature}, vol. 585, no. 7825, pp. 357--362, 2020.
+
+\bibitem{ref11}
+T. Christie, ``Django REST Framework,''
+\textit{DRF Documentation}, 2024. [Online]. Available: https://www.django-rest-framework.org/
+
+\bibitem{ref12}
+A. Ronacher, ``Celery: Distributed Task Queue,''
+\textit{Celery Project}, 2024. [Online]. Available: https://docs.celeryq.dev/
+
+\bibitem{ref13}
+Tailwind Labs, ``Tailwind CSS — Utility-First CSS Framework,''
+\textit{Tailwind CSS Documentation}, 2024. [Online]. Available: https://tailwindcss.com/
+
+\bibitem{ref14}
+M. Popmotion, ``Framer Motion — Production-Ready Motion Library for React,''
+\textit{Framer Motion Documentation}, 2024. [Online]. Available: https://www.framer.com/motion/
+
+\bibitem{ref15}
+I. Sommerville, \textit{Software Engineering}, 10th ed.
+Boston, MA, USA: Pearson, 2016.
+
+\bibitem{ref16}
+R. S. Pressman and B. R. Maxim, \textit{Software Engineering: A Practitioner's Approach}, 8th ed.
+New York, NY, USA: McGraw-Hill, 2015.
+
+\bibitem{ref17}
+A. G\'eron, \textit{Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow}, 3rd ed.
+Sebastopol, CA, USA: O'Reilly Media, 2022.
+
+\bibitem{ref18}
+H. He and E. A. Garcia, ``Learning from Imbalanced Data,''
+\textit{IEEE Transactions on Knowledge and Data Engineering}, vol. 21, no. 9, pp. 1263--1284, 2009.
+
+\bibitem{ref19}
+J. Bergstra, R. Bardenet, Y. Bengio, and B. K\'egl, ``Algorithms for Hyper-Parameter Optimization,''
+\textit{Advances in Neural Information Processing Systems}, vol. 24, pp. 2546--2554, 2011.
+
+\bibitem{ref20}
+M. Fowler, \textit{Patterns of Enterprise Application Architecture}.
+Boston, MA, USA: Addison-Wesley, 2002.
+
+
+\end{thebibliography}
+
+
+\end{document}
