@@ -1,10 +1,11 @@
-﻿// src/app/results/page.tsx
+// src/app/results/page.tsx
 "use client";
 
 import { useEffect } from "react";
 import { useDataset } from "../../lib/hooks/useDataset";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 
 /** Determine an overall rating label from the primary metric */
 function getRating(taskType: string, metrics: Record<string, any>): string {
@@ -22,18 +23,32 @@ export default function ResultsPage() {
   const { taskType, trainingResult, setJobStatus } = useDataset();
   useEffect(() => { setJobStatus('ready'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Resolve metrics â€” use real data if available, otherwise show mock classification result
-  const effectiveTask = trainingResult?.task_type ?? taskType ?? 'classification';
-  const metrics: Record<string, any> = trainingResult?.metrics ?? {
-    accuracy: 0.91, precision: 0.90, recall: 0.92, f1: 0.91,
-    confusion_matrix: [[85, 5], [3, 7]],
-    feature_importance: [
-      { feature: 'income', importance: 0.35 },
-      { feature: 'age', importance: 0.25 },
-      { feature: 'education', importance: 0.20 },
-      { feature: 'purchase_history', importance: 0.20 },
-    ],
-  };
+  // If we have a training result but the metrics are missing, the job likely failed.
+  const hasRealMetrics = !!(trainingResult?.metrics && Object.keys(trainingResult.metrics).length > 0);
+
+  // Fall back to mock classification metrics only when there is no real training result at all.
+  const metrics: Record<string, any> = (trainingResult && hasRealMetrics)
+    ? trainingResult.metrics
+    : (!trainingResult ? {
+        accuracy: 0.91, precision: 0.90, recall: 0.92, f1: 0.91,
+        confusion_matrix: [[85, 5], [3, 7]],
+        feature_importance: [
+          { feature: 'income', importance: 0.35 },
+          { feature: 'age', importance: 0.25 },
+          { feature: 'education', importance: 0.20 },
+          { feature: 'purchase_history', importance: 0.20 },
+        ],
+      } : {});
+
+  // Derive task type from the actual metrics returned by the engine.
+  // The engine may auto-switch (e.g. regression task with a categorical target → classification),
+  // so the stored task_type on the dataset can disagree with the metrics keys.
+  const effectiveTask = (() => {
+    if ('accuracy' in metrics) return 'classification';
+    if ('r2' in metrics || 'rmse' in metrics || 'mse' in metrics) return 'regression';
+    if ('n_clusters' in metrics || 'silhouette_score' in metrics) return 'clustering';
+    return trainingResult?.task_type ?? taskType ?? 'classification';
+  })();
 
   const isClassification = effectiveTask === 'classification';
   const isRegression = effectiveTask === 'regression';
@@ -41,7 +56,8 @@ export default function ResultsPage() {
   const rating = getRating(effectiveTask, metrics);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
+    <ProtectedRoute>
+      <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
@@ -53,17 +69,34 @@ export default function ResultsPage() {
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
             {trainingResult
-              ? `${trainingResult.algorithm} Â· ${effectiveTask} Â· ${metrics.n_samples ?? 'â€”'} samples`
+              ? `${trainingResult.algorithm} · ${effectiveTask} · ${metrics.n_samples ?? '—'} samples`
               : 'Here\'s a detailed breakdown of your model\'s performance.'}
           </p>
         </motion.div>
+
+        {/* Warning when training completed but metrics are missing */}
+        {trainingResult && !hasRealMetrics && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-red-900/20 border border-red-700/40 rounded-2xl p-6 mb-8 text-center"
+          >
+            <p className="text-red-400 font-bold text-lg mb-1">Training did not produce results</p>
+            <p className="text-gray-400 text-sm">
+              The model training job (#{trainingResult.job_id}) failed to complete successfully.
+              Please go back and retrain.
+            </p>
+            <Link href="/train" className="inline-block mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 text-sm">
+              Back to Train
+            </Link>
+          </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="bg-gradient-to-br from-[var(--color-bg-secondary)] to-gray-800/50 rounded-2xl shadow-xl p-8 border border-[var(--color-border)] mb-8"
         >
-          {/* â”€â”€ Classification metrics â”€â”€ */}
+          {/*  Classification metrics  */}
           {isClassification && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -74,7 +107,7 @@ export default function ResultsPage() {
                   { label: 'F1-Score',  value: metrics.f1,        color: 'purple' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className={`bg-gradient-to-br from-${color}-900/20 to-${color}-900/10 p-6 rounded-xl border border-${color}-800/30 text-center`}>
-                    <div className={`text-4xl font-bold text-${color}-400 mb-2`}>{value?.toFixed(2) ?? 'â€”'}</div>
+                    <div className={`text-4xl font-bold text-${color}-400 mb-2`}>{value?.toFixed(2) ?? '—'}</div>
                     <div className="text-gray-400">{label}</div>
                   </div>
                 ))}
@@ -135,18 +168,18 @@ export default function ResultsPage() {
             </>
           )}
 
-          {/* â”€â”€ Regression metrics â”€â”€ */}
+          {/*  Regression metrics  */}
           {isRegression && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {[
-                  { label: 'RÂ² Score', value: metrics.r2?.toFixed(4),   color: 'emerald' },
+                  { label: 'R² Score', value: metrics.r2?.toFixed(4),   color: 'emerald' },
                   { label: 'RMSE',     value: metrics.rmse?.toFixed(4),  color: 'cyan' },
                   { label: 'MAE',      value: metrics.mae?.toFixed(4),   color: 'indigo' },
                   { label: 'MSE',      value: metrics.mse?.toFixed(4),   color: 'purple' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className={`bg-gradient-to-br from-${color}-900/20 to-${color}-900/10 p-6 rounded-xl border border-${color}-800/30 text-center`}>
-                    <div className={`text-4xl font-bold text-${color}-400 mb-2`}>{value ?? 'â€”'}</div>
+                    <div className={`text-4xl font-bold text-${color}-400 mb-2`}>{value ?? '—'}</div>
                     <div className="text-gray-400">{label}</div>
                   </div>
                 ))}
@@ -173,15 +206,15 @@ export default function ResultsPage() {
             </>
           )}
 
-          {/* â”€â”€ Clustering metrics â”€â”€ */}
+          {/*  Clustering metrics  */}
           {isClustering && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {[
-                  { label: 'Clusters Found',    value: String(metrics.n_clusters ?? 'â€”'),     color: 'indigo' },
+                  { label: 'Clusters Found',    value: String(metrics.n_clusters ?? '—'),     color: 'indigo' },
                   { label: 'Silhouette Score',  value: metrics.silhouette_score?.toFixed(4) ?? 'N/A', color: 'emerald' },
                   { label: metrics.inertia !== undefined ? 'Inertia' : metrics.bic !== undefined ? 'BIC' : 'Samples',
-                    value: (metrics.inertia ?? metrics.bic ?? metrics.n_samples)?.toFixed(2) ?? 'â€”', color: 'cyan' },
+                    value: (metrics.inertia ?? metrics.bic ?? metrics.n_samples)?.toFixed(2) ?? '—', color: 'cyan' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className={`bg-gradient-to-br from-${color}-900/20 to-${color}-900/10 p-6 rounded-xl border border-${color}-800/30 text-center`}>
                     <div className={`text-4xl font-bold text-${color}-400 mb-2`}>{value}</div>
@@ -272,13 +305,13 @@ export default function ResultsPage() {
               body: isClassification
                 ? `Accuracy: ${(metrics.accuracy * 100).toFixed(1)}% on held-out test samples.`
                 : isRegression
-                ? `RÂ² of ${metrics.r2?.toFixed(3)} explains variance in predictions.`
+                ? `R² of ${metrics.r2?.toFixed(3)} explains variance in predictions.`
                 : `Found ${metrics.n_clusters} clusters${metrics.silhouette_score ? ` with silhouette score ${metrics.silhouette_score.toFixed(3)}` : ''}.`,
               icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
             },
             {
               title: 'Trained On Real Data',
-              body: `${metrics.n_samples ?? 'â€”'} samples Â· ${metrics.n_features ?? 'â€”'} features${metrics.target_column ? ` Â· target: "${metrics.target_column}"` : ''}.`,
+              body: `${metrics.n_samples ?? '—'} samples · ${metrics.n_features ?? '—'} features${metrics.target_column ? ` · target: "${metrics.target_column}"` : ''}.`,
               icon: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4",
             },
             {
@@ -300,5 +333,6 @@ export default function ResultsPage() {
         </motion.div>
       </div>
     </main>
+    </ProtectedRoute>
   );
 }

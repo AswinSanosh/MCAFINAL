@@ -1,12 +1,14 @@
 ﻿// src/app/(root)/train/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useDataset } from "../../lib/hooks/useDataset";
 import { motion } from "framer-motion";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 import Link from "next/link";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
+const MEDIA_BASE = "http://localhost:8000/media";
 
 // ─── Hyperparameter type definitions ─────────────────────────────────────────
 type SliderDef = { type: "slider"; label: string; min: number; max: number; step: number; default: number; description?: string };
@@ -190,21 +192,24 @@ export default function TrainPage() {
   const {
     datasetId, taskType, pipelineConfig,
     setJobStatus, setTrainingResult, trainingResult,
-    selectedColumns, targetColumn, datasetFilename,
+    selectedColumns, targetColumn, datasetFilename, imageZipPath,
   } = useDataset();
 
-  const algorithm = pipelineConfig?.algorithm ?? "RandomForestClassifier";
+  const algorithm =
+    pipelineConfig?.algorithm ??
+    (taskType === "regression" ? "RandomForestRegressor" : taskType === "clustering" ? "KMeans" : "RandomForestClassifier");
   const paramDefs = ALGO_PARAMS[algorithm] ?? {};
   const isClustering = taskType === "clustering";
+  const isImageClustering = isClustering && !!imageZipPath;
 
   const [phase, setPhase] = useState<"config" | "training" | "done">(
-    () => (trainingResult ? "done" : "config")
+    () => (trainingResult?.metrics && Object.keys(trainingResult.metrics).length > 0 ? "done" : "config")
   );
   const [hyperparams, setHyperparams] = useState<Record<string, any>>(
     () => initHyperparams(algorithm)
   );
   const [testSize, setTestSize] = useState(0.2);
-  const [progress, setProgress] = useState(() => (trainingResult ? 100 : 0));
+  const [progress, setProgress] = useState(() => (trainingResult?.metrics && Object.keys(trainingResult.metrics).length > 0 ? 100 : 0));
   const [metrics, setMetrics] = useState<Record<string, any>>(
     () => trainingResult?.metrics ?? {}
   );
@@ -213,10 +218,29 @@ export default function TrainPage() {
   );
   const [trainError, setTrainError] = useState<string | null>(null);
 
+  const cancelledRef = useRef(false);
+  const activeJobIdRef = useRef<number | null>(null);
+
   const setParam = (key: string, value: any) =>
     setHyperparams((prev) => ({ ...prev, [key]: value }));
 
+  const handleCancelTraining = async () => {
+    cancelledRef.current = true;
+    if (activeJobIdRef.current) {
+      try {
+        await fetch(`${API_BASE}/cancel/${activeJobIdRef.current}/`, { credentials: 'include', method: "POST" });
+      } catch { /* ignore */ }
+      activeJobIdRef.current = null;
+    }
+    setPhase("config");
+    setProgress(0);
+    setCurrentPhase("");
+    setJobStatus("idle" as any);
+  };
+
   const handleStartTraining = async () => {
+    cancelledRef.current = false;
+    activeJobIdRef.current = null;
     setPhase("training");
     setTrainError(null);
     setProgress(0);
@@ -230,7 +254,7 @@ export default function TrainPage() {
       }
     }, 800);
 
-    if (!datasetId || !pipelineConfig) {
+    if ((!datasetId && !isImageClustering) || !pipelineConfig) {
       setTimeout(() => {
         clearInterval(phaseTimer);
         const mockMetrics = getMockMetrics(taskType ?? "classification", algorithm);
@@ -252,35 +276,91 @@ export default function TrainPage() {
 
     setJobStatus("training");
     try {
-      const res = await fetch(`${API_BASE}/train/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dataset_id: parseInt(datasetId),
-          pipeline: pipelineConfig,
-          feature_columns: selectedColumns.length > 0 ? selectedColumns : undefined,
-          hyperparams,
-          test_size: testSize,
-        }),
-      });
+      const res = await fetch(
+        isImageClustering ? `${API_BASE}/image-cluster/` : `${API_BASE}/train/`,
+        { credentials: 'include', method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            isImageClustering
+              ? {
+                  zip_path: imageZipPath,
+                  algorithm,
+                  n_clusters: ((hyperparams.n_clusters ?? hyperparams.n_components ?? 3) as number),
+                  algo_params: hyperparams,
+                }
+              : {
+                  dataset_id: parseInt(datasetId!),
+                  pipeline: pipelineConfig,
+                  feature_columns: selectedColumns.length > 0 ? selectedColumns : undefined,
+                  hyperparams,
+                  test_size: testSize,
+                }
+          ),
+        }
+      );
       clearInterval(phaseTimer);
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error ?? "Training failed");
       }
       const data = await res.json();
-      setProgress(100);
-      setCurrentPhase("Training Complete!");
-      setMetrics(data.metrics ?? {});
-      setTrainingResult(data);
-      setJobStatus("ready");
-      setPhase("done");
+
+      // Celery async: poll until job completes
+      if (data.status === "pending" || data.status === "training") {
+        const jobId = data.job_id;
+        activeJobIdRef.current = jobId;
+        setProgress(92);
+        setCurrentPhase("Worker is training your model…");
+
+        const poll = async () => {
+          if (cancelledRef.current) return;
+          try {
+            const pollRes = await fetch(`${API_BASE}/result/${jobId}/`);
+            if (!pollRes.ok) {
+              setTimeout(poll, 2500);
+              return;
+            }
+            const pollData = await pollRes.json();
+            if (cancelledRef.current) return;
+
+            if (pollData.status === "completed") {
+              setProgress(100);
+              setCurrentPhase("Training Complete!");
+              setMetrics(pollData.metrics ?? {});
+              setTrainingResult({ ...data, metrics: pollData.metrics });
+              setJobStatus("ready");
+              setPhase("done");
+            } else if (pollData.status === "failed" || pollData.status === "cancelled") {
+              setProgress(100);
+              setCurrentPhase(pollData.status === "cancelled" ? "Cancelled." : "Training failed.");
+              setTrainError(pollData.error_message ?? "Training failed in worker");
+              setJobStatus("error");
+              setPhase("done");
+            } else {
+              // still running (pending / training / optimizing)
+              setTimeout(poll, 2500);
+            }
+          } catch {
+            setTimeout(poll, 3000);
+          }
+        };
+        setTimeout(poll, 2000);
+      } else {
+        // synchronous / direct result
+        setProgress(100);
+        setCurrentPhase("Training Complete!");
+        setMetrics(data.metrics ?? {});
+        setTrainingResult(data);
+        setJobStatus("ready");
+        setPhase("done");
+      }
     } catch (err: any) {
       clearInterval(phaseTimer);
       setProgress(100);
       setCurrentPhase("Training failed.");
       setTrainError(err.message ?? "Unexpected error");
       setJobStatus("error");
+      setPhase("done");
     }
   };
 
@@ -310,7 +390,8 @@ export default function TrainPage() {
       : `Custom — ${pipelineConfig?.algorithm ?? "Unknown"}`;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
+    <ProtectedRoute>
+      <main className="min-h-screen bg-linear-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <motion.div
@@ -319,7 +400,7 @@ export default function TrainPage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-8 mt-8"
         >
-          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 mb-3">
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400 mb-3">
             {phase === "config"
               ? "Configure Training"
               : phase === "training"
@@ -367,7 +448,7 @@ export default function TrainPage() {
             transition={{ duration: 0.4 }}
           >
             {/* No dataset warning */}
-            {!datasetId && (
+            {!datasetId && !isImageClustering && (
               <div className="mb-6 p-4 bg-amber-900/20 border border-amber-700/40 rounded-xl text-amber-300 text-sm">
                 No real dataset detected — training will use demo data. Upload a CSV on the Upload page for real results.
               </div>
@@ -384,7 +465,9 @@ export default function TrainPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between gap-2">
                     <span className="text-gray-400 shrink-0">File</span>
-                    <span className="text-gray-200 font-mono truncate">{datasetFilename || "—"}</span>
+                    <span className="text-gray-200 font-mono truncate">
+                      {isImageClustering ? "Image ZIP" : datasetFilename || "—"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Task</span>
@@ -462,9 +545,13 @@ export default function TrainPage() {
                 </div>
               ) : (
                 <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 flex flex-col justify-center">
-                  <h3 className="text-base font-semibold text-white mb-2">Clustering Mode</h3>
+                  <h3 className="text-base font-semibold text-white mb-2">
+                    {isImageClustering ? "Image Clustering Mode" : "Clustering Mode"}
+                  </h3>
                   <p className="text-sm text-gray-400">
-                    Clustering is unsupervised — the entire dataset is used for fitting. There is no separate train/test split. Adjust the cluster count and algorithm parameters below.
+                    {isImageClustering
+                      ? "Images are resized, pixel features are extracted, and PCA-reduced before clustering. The algorithm parameters below apply to the PCA-reduced feature space."
+                      : "Clustering is unsupervised — the entire dataset is used for fitting. There is no separate train/test split. Adjust the cluster count and algorithm parameters below."}
                   </p>
                 </div>
               )}
@@ -500,7 +587,7 @@ export default function TrainPage() {
                           )}
                         </label>
                         {def.type === "slider" && (
-                          <span className="text-sm font-mono font-semibold text-indigo-300 min-w-[48px] text-right">
+                          <span className="text-sm font-mono font-semibold text-indigo-300 min-w-12 text-right">
                             {fmtValue(hyperparams[key] ?? def.default, def.step)}
                           </span>
                         )}
@@ -572,7 +659,7 @@ export default function TrainPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleStartTraining}
-              className="w-full py-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-bold text-xl shadow-lg flex items-center justify-center gap-3 transition-all mb-4"
+              className="w-full py-5 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-bold text-xl shadow-lg flex items-center justify-center gap-3 transition-all mb-4"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -605,7 +692,7 @@ export default function TrainPage() {
               </div>
               <div className="relative h-6 bg-gray-800 rounded-full overflow-hidden mb-4">
                 <motion.div
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-600 to-purple-600"
+                  className="absolute top-0 left-0 h-full bg-linear-to-r from-indigo-600 to-purple-600"
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.4 }}
                 />
@@ -621,7 +708,7 @@ export default function TrainPage() {
                 <div className="w-40 h-40 rounded-full border-4 border-indigo-900/30 flex items-center justify-center">
                   <div className="w-32 h-32 rounded-full border-4 border-purple-900/30 flex items-center justify-center">
                     <motion.div
-                      className="w-24 h-24 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center"
+                      className="w-24 h-24 rounded-full bg-linear-to-r from-indigo-600 to-purple-600 flex items-center justify-center"
                       animate={{ rotate: 360 }}
                       transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
                     >
@@ -650,6 +737,18 @@ export default function TrainPage() {
             <p className="text-center text-gray-500 text-sm">
               Training in progress — this may take a moment depending on dataset size and algorithm complexity.
             </p>
+
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={handleCancelTraining}
+                className="px-6 py-2.5 bg-red-900/30 hover:bg-red-800/50 border border-red-700/40 text-red-400 hover:text-red-300 rounded-xl text-sm font-semibold transition-all flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel Training
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -677,7 +776,7 @@ export default function TrainPage() {
 
             {/* Metrics panel */}
             {Object.keys(metrics).length > 0 && (
-              <div className="bg-gradient-to-br from-emerald-900/20 to-emerald-900/10 border border-emerald-800/30 rounded-2xl p-6 mb-6">
+              <div className="bg-linear-to-br from-emerald-900/20 to-emerald-900/10 border border-emerald-800/30 rounded-2xl p-6 mb-6">
                 <div className="flex items-center justify-center mb-6">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-emerald-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -758,46 +857,111 @@ export default function TrainPage() {
               </div>
             )}
 
+            {/* Image cluster gallery */}
+            {metrics.task_type === "image_clustering" && metrics.sample_images &&
+              Object.keys(metrics.sample_images as Record<string, string[]>).filter(k => Number(k) >= 0).length > 0 && (
+              <div className="space-y-4 mb-6">
+                {Object.keys(metrics.sample_images as Record<string, string[]>)
+                  .filter(k => Number(k) >= 0)
+                  .sort((a, b) => Number(a) - Number(b))
+                  .map(cid => {
+                    const samples = (metrics.sample_images as Record<string, string[]>)[cid] ?? [];
+                    const dist = metrics.cluster_distribution as Record<string, number> | undefined;
+                    const count = dist?.[cid];
+                    return (
+                      <div key={cid} className="bg-gray-800/50 rounded-xl border border-gray-700 p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-white font-bold">Cluster {Number(cid) + 1}</h3>
+                          {count !== undefined && (
+                            <span className="text-sm text-gray-400 bg-gray-700/50 px-3 py-1 rounded-full">
+                              {count} image{count !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                        {samples.length > 0 && (
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                            {samples.map((relPath, i) => (
+                              <div key={i} className="aspect-square rounded-lg overflow-hidden bg-gray-700">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={`${MEDIA_BASE}/${relPath}`}
+                                  alt={`Cluster ${Number(cid) + 1} sample ${i + 1}`}
+                                  className="w-full h-full object-cover" loading="lazy" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
             {/* Error */}
             {trainError && (
-              <div className="mb-6 p-4 bg-red-900/20 border border-red-800/40 rounded-xl text-red-300 text-sm">
-                <strong>Training Error:</strong> {trainError}
+              <div className="mb-6 p-4 bg-red-900/20 border border-red-800/40 rounded-2xl text-red-300 text-sm space-y-2">
+                <div className="flex items-center gap-2 font-semibold text-red-400 text-base">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                  Training Error
+                </div>
+                <p>{trainError}</p>
+                {trainError.toLowerCase().includes("not found") && (
+                  <Link href="/upload">
+                    <button className="mt-2 px-4 py-2 bg-red-800/40 hover:bg-red-700/50 border border-red-700/50 rounded-lg text-red-200 text-sm font-medium transition-colors">
+                      Re-upload Dataset →
+                    </button>
+                  </Link>
+                )}
               </div>
             )}
 
             {/* Action buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/select-pipeline" className="flex-1">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full px-6 py-4 bg-gray-800 text-gray-300 rounded-xl font-bold hover:bg-gray-700 transition-all border border-gray-700 flex items-center justify-center"
+              {isImageClustering && trainingResult?.job_id ? (
+                <a
+                  href={`${API_BASE}/image-download/${trainingResult.job_id}/`}
+                  download={`clusters_job_${trainingResult.job_id}.zip`}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-linear-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700 text-white rounded-xl font-bold transition-all"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Back to Pipelines
-                </motion.button>
-              </Link>
+                  Download Clusters (.zip)
+                </a>
+              ) : (
+                <Link href="/select-pipeline" className="flex-1">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full px-6 py-4 bg-gray-800 text-gray-300 rounded-xl font-bold hover:bg-gray-700 transition-all border border-gray-700 flex items-center justify-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Pipelines
+                  </motion.button>
+                </Link>
+              )}
               <Link href="/optimize" className="flex-1">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full px-6 py-4 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-lg flex items-center justify-center transition-all"
+                  className="w-full px-6 py-4 rounded-xl font-bold text-white bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg flex items-center justify-center transition-all text-lg"
                 >
-                  Optimize Hyperparameters
+                  Next — Optimize
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </motion.button>
               </Link>
-              <Link href="/results" className="flex-1">
+              <Link href="/results" className="sm:flex-none">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full px-6 py-4 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg flex items-center justify-center transition-all"
+                  className="w-full px-6 py-4 rounded-xl font-semibold text-emerald-300 bg-emerald-900/20 hover:bg-emerald-900/40 border border-emerald-700/40 flex items-center justify-center transition-all"
                 >
-                  View Results
+                  Skip to Results
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
@@ -808,5 +972,6 @@ export default function TrainPage() {
         )}
       </div>
     </main>
+    </ProtectedRoute>
   );
 }

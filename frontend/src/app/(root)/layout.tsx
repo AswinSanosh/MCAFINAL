@@ -2,10 +2,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { DatasetProvider } from "../lib/hooks/useDataset";
-import Navbar from "../components/layout/Navbar/page";
-import Footer from "../components/layout/Footer/Page";
-import Sidebar from "../components/layout/Sidebar/Page";
+import RootLayoutClient from "./RootLayoutClient";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,20 +17,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${inter.className} flex min-h-screen flex-col bg-[var(--color-bg)] text-[var(--color-text)]`}
-      >
-        <DatasetProvider>
-          <Navbar />
-          <div className="flex flex-1 mt-16">
-            <Sidebar />
-            <div className="flex-1">
-              <main>{children}</main>
-              <Footer />
-            </div>
-          </div>
-        </DatasetProvider>
+    <html lang="en" data-scroll-behavior="smooth">
+      <body className={`${inter.className} flex min-h-screen flex-col bg-(--color-bg) text-(--color-text)`}>
+        <RootLayoutClient>{children}</RootLayoutClient>
       </body>
     </html>
   );

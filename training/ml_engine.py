@@ -363,13 +363,18 @@ def load_dataset(file_path: str) -> pd.DataFrame:
 
 
 def encode_categorical_features(X: pd.DataFrame):
-    """Label-encode all object/category columns in X."""
+    """Label-encode all non-numeric columns in X.
+
+    Uses pd.api.types.is_numeric_dtype so that pandas StringDtype (pandas 2+),
+    CategoricalDtype, and legacy object dtype are all handled correctly.
+    """
     X = X.copy()
     encoders = {}
-    for col in X.select_dtypes(include=['object', 'category']).columns:
-        le = LabelEncoder()
-        X[col] = le.fit_transform(X[col].astype(str))
-        encoders[col] = le
+    for col in X.columns:
+        if not pd.api.types.is_numeric_dtype(X[col]):
+            le = LabelEncoder()
+            X[col] = le.fit_transform(X[col].astype(str))
+            encoders[col] = le
     return X, encoders
 
 
@@ -671,7 +676,23 @@ def build_model(algorithm: str, task_type: str, hyperparams: dict = None):
             )
         if algorithm == 'GaussianNB':
             return GaussianNB(var_smoothing=float(hp.get('var_smoothing', 1)) * 1e-9)
-        return get_classifier(algorithm)
+        # If a *Regressor* name was passed after an auto-switch to classification,
+        # map it to the equivalent classifier so training still succeeds.
+        _regressor_to_classifier = {
+            'RandomForestRegressor':      'RandomForestClassifier',
+            'ExtraTreesRegressor':        'ExtraTreesClassifier',
+            'GradientBoostingRegressor':  'GradientBoostingClassifier',
+            'XGBRegressor':               'XGBClassifier',
+            'SVR':                        'SVC',
+            'KNeighborsRegressor':        'KNeighborsClassifier',
+            'MLPRegressor':               'MLPClassifier',
+            'LinearRegression':           'LogisticRegression',
+            'Ridge':                      'LogisticRegression',
+            'Lasso':                      'LogisticRegression',
+            'ElasticNet':                 'LogisticRegression',
+        }
+        mapped = _regressor_to_classifier.get(algorithm, algorithm)
+        return build_model(mapped, 'classification', hp) if mapped != algorithm else get_classifier(algorithm)
 
     # ── Regression ────────────────────────────────────────────────────────
     if task_type == 'regression':
@@ -852,17 +873,28 @@ def train(
         imputer = SimpleImputer(strategy='mean')
         X_arr = imputer.fit_transform(X_encoded)
 
-        # Encode target
+        # Encode target.
+        # pd.api.types.is_numeric_dtype handles object, StringDtype (pandas 2+),
+        # and CategoricalDtype robustly — unlike a bare `dtype == object` check.
+        _target_numeric = pd.api.types.is_numeric_dtype(y_raw)
+
+        # Auto-switch: regression with a text target → treat as classification.
+        if task_type == 'regression' and not _target_numeric:
+            task_type = 'classification'
+
         if task_type == 'classification':
-            if y_raw.dtype == object or str(y_raw.dtype) == 'category':
+            if not _target_numeric:
                 le_target = LabelEncoder()
                 y = le_target.fit_transform(y_raw.astype(str))
                 classes = le_target.classes_.tolist()
             else:
-                y = y_raw.fillna(y_raw.mode()[0]).values.astype(int)
+                _num_y = pd.to_numeric(y_raw, errors='coerce')
+                y = _num_y.fillna(_num_y.mode()[0]).values.astype(int)
                 classes = sorted(pd.Series(y).unique().tolist())
         else:
-            y = y_raw.fillna(y_raw.median()).values.astype(float)
+            # True numeric regression target
+            _num_y = pd.to_numeric(y_raw, errors='coerce')
+            y = _num_y.fillna(_num_y.median()).values.astype(float)
             classes = None
 
         # Scale features
@@ -1076,16 +1108,26 @@ def _get_trial_params(trial, algorithm: str) -> dict:
     if algorithm == 'MLPRegressor':
         return {'alpha': trial.suggest_float('alpha', 1e-5, 0.1, log=True)}
     if algorithm == 'KMeans':
-        return {'n_clusters': trial.suggest_int('n_clusters', 2, 15)}
+        return {
+            'n_clusters': trial.suggest_int('n_clusters', 2, 15),
+            'init': trial.suggest_categorical('init', ['k-means++', 'random']),
+            'n_init': trial.suggest_int('n_init', 5, 20),
+        }
     if algorithm == 'DBSCAN':
         return {
             'eps': trial.suggest_float('eps', 0.1, 3.0),
             'min_samples': trial.suggest_int('min_samples', 2, 20),
         }
     if algorithm in ('AgglomerativeClustering', 'Birch', 'SpectralClustering'):
-        return {'n_clusters': trial.suggest_int('n_clusters', 2, 15)}
+        return {
+            'n_clusters': trial.suggest_int('n_clusters', 2, 15),
+            'linkage': trial.suggest_categorical('linkage', ['ward', 'complete', 'average', 'single']),
+        } if algorithm == 'AgglomerativeClustering' else {'n_clusters': trial.suggest_int('n_clusters', 2, 15)}
     if algorithm == 'GaussianMixture':
-        return {'n_components': trial.suggest_int('n_components', 2, 15)}
+        return {
+            'n_components': trial.suggest_int('n_components', 2, 15),
+            'covariance_type': trial.suggest_categorical('covariance_type', ['full', 'tied', 'diag', 'spherical']),
+        }
     return {}
 
 
@@ -1119,6 +1161,11 @@ def optimize(
     df = load_dataset(dataset_path)
     df = df.dropna(how='all', axis=1).dropna(how='all', axis=0)
 
+    # Populated per trial for classification; left empty for regression/clustering.
+    trial_precisions: dict[int, float] = {}
+    trial_recalls: dict[int, float] = {}
+    trial_f1s: dict[int, float] = {}
+
     if task_type in ('classification', 'regression'):
         if not target_column or target_column not in df.columns:
             target_column = df.columns[-1]
@@ -1133,14 +1180,20 @@ def optimize(
         imputer = SimpleImputer(strategy='mean')
         X_arr = imputer.fit_transform(X_encoded)
 
+        _target_numeric = pd.api.types.is_numeric_dtype(y_raw)
+        if task_type == 'regression' and not _target_numeric:
+            task_type = 'classification'
+
         if task_type == 'classification':
-            if y_raw.dtype == object or str(y_raw.dtype) == 'category':
+            if not _target_numeric:
                 le = LabelEncoder()
                 y = le.fit_transform(y_raw.astype(str))
             else:
-                y = y_raw.fillna(y_raw.mode()[0]).values.astype(int)
-        else:
-            y = y_raw.fillna(y_raw.median()).values.astype(float)
+                _num_y = pd.to_numeric(y_raw, errors='coerce')
+                y = _num_y.fillna(_num_y.mode()[0]).values.astype(int)
+        else:  # true numeric regression
+            _num_y = pd.to_numeric(y_raw, errors='coerce')
+            y = _num_y.fillna(_num_y.median()).values.astype(float)
 
         scaler = get_scaler(preprocessing)
         X_scaled = scaler.fit_transform(X_arr) if scaler else X_arr
@@ -1155,20 +1208,36 @@ def optimize(
         X_train, X_test, y_train = _apply_feature_engineering_supervised(
             X_train, X_test, y_train, feature_engineering, task_type
         )
+        n_test_samples = int(len(y_test))
 
         def objective(trial):
             params = _get_trial_params(trial, algorithm)
-            if task_type == 'classification':
-                model = get_classifier(algorithm)
-            else:
-                model = get_regressor(algorithm)
             try:
-                model.set_params(**{k: v for k, v in params.items()
-                                    if k in model.get_params()})
+                # Use build_model so type coercions exactly match train()
+                model = build_model(algorithm, task_type, params)
                 model.fit(X_train, y_train)
+                # Apply same postprocessing as train() so scores are comparable
+                if postprocessing == 'CalibratedClassifierCV' and task_type == 'classification':
+                    from sklearn.calibration import CalibratedClassifierCV
+                    try:
+                        calibrated = CalibratedClassifierCV(model, cv='prefit', method='isotonic')
+                        calibrated.fit(X_train, y_train)
+                        model = calibrated
+                    except Exception:
+                        pass
                 y_pred = model.predict(X_test)
                 if task_type == 'classification':
-                    return float(accuracy_score(y_test, y_pred))
+                    acc = float(accuracy_score(y_test, y_pred))
+                    try:
+                        prec = float(precision_score(y_test, y_pred, average='weighted', zero_division=0))
+                        rec  = float(recall_score(y_test, y_pred, average='weighted', zero_division=0))
+                        f1   = float(f1_score(y_test, y_pred, average='weighted', zero_division=0))
+                    except Exception:
+                        prec = rec = f1 = acc
+                    trial_precisions[trial.number] = prec
+                    trial_recalls[trial.number]    = rec
+                    trial_f1s[trial.number]        = f1
+                    return acc
                 else:
                     return float(r2_score(y_test, y_pred))
             except Exception:
@@ -1182,6 +1251,7 @@ def optimize(
         scaler = get_scaler(preprocessing) or StandardScaler()
         X_scaled = scaler.fit_transform(X_arr)
         X_scaled = _apply_feature_engineering_clustering(X_scaled, feature_engineering)
+        n_test_samples = int(len(X_scaled))
 
         def objective(trial):
             params = _get_trial_params(trial, algorithm)
@@ -1214,14 +1284,287 @@ def optimize(
     study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
 
     return {
-        'best_score': round(float(study.best_value), 4),
+        'best_score': float(study.best_value),
         'best_params': study.best_params,
         'n_trials': len(study.trials),
+        'n_test_samples': n_test_samples,
         'trials': [
             {
                 'id': t.number + 1,
-                'score': round(float(t.value), 4) if t.value is not None else 0.0,
+                'score': float(t.value) if t.value is not None else 0.0,
+                'precision': trial_precisions.get(t.number),
+                'recall':    trial_recalls.get(t.number),
+                'f1':        trial_f1s.get(t.number),
                 'params': t.params,
+                'n_test_samples': n_test_samples,
+            }
+            for t in study.trials if t.value is not None
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Image Clustering
+# ---------------------------------------------------------------------------
+
+def cluster_images(
+    zip_path: str,
+    algorithm: str = 'KMeans',
+    n_clusters: int = 3,
+    img_size: int = 64,
+    use_pca: bool = True,
+    pca_components: int = 50,
+    results_dir: str | None = None,
+    algo_params: dict | None = None,
+) -> dict:
+    """
+    Extract pixel features from all images in a ZIP archive and cluster them.
+
+    Parameters
+    ----------
+    zip_path       : path to the ZIP file containing images
+    algorithm      : clustering algorithm name (KMeans, DBSCAN, etc.)
+    n_clusters     : number of clusters (ignored by DBSCAN / OPTICS)
+    img_size       : images are resized to (img_size x img_size) RGB
+    use_pca        : reduce dimensionality with PCA before clustering
+    pca_components : number of PCA components (capped to min(n_images, img_size²*3))
+    results_dir    : directory to store sample images per cluster (None = skip)
+
+    Returns
+    -------
+    dict with clustering metrics and per-cluster sample image paths
+    """
+    import zipfile
+    import io
+    import os
+    from PIL import Image as PILImage
+
+    IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.gif', '.tiff'}
+
+    # ── 1. Read images from ZIP ───────────────────────────────────────────
+    feature_vectors = []   # list of np.ndarray shape (img_size*img_size*3,)
+    filenames = []         # original filename for each row
+    pil_images = []        # PIL Image (RGB) for sample saving
+
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        entries = [
+            n for n in zf.namelist()
+            if os.path.splitext(n.lower())[1] in IMAGE_EXTS
+            and not os.path.basename(n).startswith('.')    # skip Mac __MACOSX
+            and '__macosx' not in n.lower()
+        ]
+        if not entries:
+            raise ValueError(
+                "No supported image files found in the ZIP archive. "
+                "Supported formats: JPG, JPEG, PNG, BMP, WEBP, GIF, TIFF."
+            )
+
+        for name in entries:
+            try:
+                data = zf.read(name)
+                img = PILImage.open(io.BytesIO(data)).convert('RGB')
+                img_resized = img.resize((img_size, img_size), PILImage.LANCZOS)
+                arr = np.array(img_resized, dtype=np.float32).flatten() / 255.0
+                feature_vectors.append(arr)
+                filenames.append(name)
+                pil_images.append(img_resized)
+            except Exception:
+                # skip corrupt/unreadable files silently
+                continue
+
+    n_images = len(feature_vectors)
+    if n_images < 2:
+        raise ValueError(
+            f"At least 2 readable images are required for clustering; "
+            f"found {n_images}."
+        )
+
+    X = np.stack(feature_vectors)   # (n_images, img_size*img_size*3)
+
+    # ── 2. Scale ──────────────────────────────────────────────────────────
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # ── 3. PCA (optional) ────────────────────────────────────────────────
+    pca_model = None
+    if use_pca:
+        n_comp = min(pca_components, n_images - 1, X_scaled.shape[1])
+        if n_comp >= 2:
+            pca_model = PCA(n_components=n_comp, random_state=42)
+            X_scaled = pca_model.fit_transform(X_scaled)
+
+    # ── 4. Cluster ────────────────────────────────────────────────────────
+    model = build_model(algorithm, 'clustering', {'n_clusters': n_clusters, **(algo_params or {})})
+    if algorithm == 'GaussianMixture':
+        model.fit(X_scaled)
+        labels = model.predict(X_scaled)
+    else:
+        labels = model.fit_predict(X_scaled)
+
+    unique_labels = set(labels)
+    actual_clusters = sorted([lb for lb in unique_labels if lb >= 0])
+    n_found = len(actual_clusters)
+
+    # ── 5. Silhouette score ───────────────────────────────────────────────
+    silhouette = None
+    if n_found >= 2:
+        try:
+            mask = labels >= 0
+            if mask.sum() > n_found:
+                silhouette = round(float(sk_silhouette_score(X_scaled[mask], labels[mask])), 4)
+        except Exception:
+            pass
+
+    # ── 6. Cluster distribution ───────────────────────────────────────────
+    unique_vals, counts = np.unique(labels, return_counts=True)
+    cluster_dist = {int(k): int(v) for k, v in zip(unique_vals, counts)}
+
+    # ── 7. Save sample images per cluster ────────────────────────────────
+    sample_images: dict[str, list[str]] = {}   # cluster_id → [rel_url, ...]
+    SAMPLES_PER_CLUSTER = 6
+
+    if results_dir:
+        os.makedirs(results_dir, exist_ok=True)
+        for cid in actual_clusters:
+            cdir = os.path.join(results_dir, f'cluster_{cid}')
+            os.makedirs(cdir, exist_ok=True)
+            indices = [i for i, lb in enumerate(labels) if lb == cid]
+            sample_idx = indices[:SAMPLES_PER_CLUSTER]
+            paths = []
+            for rank, idx in enumerate(sample_idx):
+                out_path = os.path.join(cdir, f'sample_{rank}.jpg')
+                pil_images[idx].save(out_path, format='JPEG', quality=85)
+                # Return path relative to MEDIA_ROOT so the frontend can build
+                # the correct URL as: MEDIA_BASE + "/" + rel
+                media_root = os.path.dirname(os.path.dirname(results_dir))
+                rel = os.path.relpath(out_path, start=media_root)
+                # Normalise to forward slashes for URL building
+                paths.append(rel.replace('\\', '/'))
+            sample_images[str(cid)] = paths
+
+    # Store full filename→cluster assignment so the download endpoint can
+    # re-read the original ZIP and re-package images by cluster.
+    file_cluster_map = {filenames[i]: int(labels[i]) for i in range(n_images)}
+
+    result: dict = {
+        'task_type': 'image_clustering',
+        'algorithm': algorithm,
+        'n_images': n_images,
+        'n_clusters': n_found,
+        'cluster_distribution': cluster_dist,
+        'sample_images': sample_images,
+        'file_cluster_map': file_cluster_map,
+    }
+    if silhouette is not None:
+        result['silhouette_score'] = silhouette
+    if pca_model is not None:
+        result['pca_components'] = int(pca_model.n_components_)
+        result['explained_variance'] = round(float(pca_model.explained_variance_ratio_.sum()), 4)
+
+    return result
+
+
+def optimize_image_clusters(
+    zip_path: str,
+    algorithm: str = 'KMeans',
+    n_clusters: int = 3,
+    n_trials: int = 20,
+    img_size: int = 64,
+    pca_components: int = 50,
+) -> dict:
+    """
+    Run Optuna hyperparameter optimisation for image clustering.
+    Extracts image features once, then searches over n_clusters and algo params.
+    Returns the same dict shape as optimize() so the frontend/poll endpoint works unchanged.
+    """
+    import zipfile, io, os
+
+    if not OPTUNA_AVAILABLE:
+        return {
+            'best_score': 0.0,
+            'best_params': {},
+            'n_trials': 0,
+            'trials': [],
+            'error': 'Optuna is not installed. Run: pip install optuna',
+        }
+
+    from PIL import Image as PILImage
+    IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.gif', '.tiff'}
+
+    # ── 1. Extract features once ─────────────────────────────────────────
+    feature_vectors = []
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        entries = [
+            n for n in zf.namelist()
+            if os.path.splitext(n.lower())[1] in IMAGE_EXTS
+            and not os.path.basename(n).startswith('.')
+            and '__macosx' not in n.lower()
+        ]
+        for name in entries:
+            try:
+                data = zf.read(name)
+                img = PILImage.open(io.BytesIO(data)).convert('RGB')
+                arr = np.array(img.resize((img_size, img_size), PILImage.LANCZOS), dtype=np.float32).flatten() / 255.0
+                feature_vectors.append(arr)
+            except Exception:
+                continue
+
+    if len(feature_vectors) < 2:
+        raise ValueError("At least 2 readable images are required for optimization.")
+
+    X = np.stack(feature_vectors)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    n_comp = min(pca_components, len(feature_vectors) - 1, X_scaled.shape[1])
+    if n_comp >= 2:
+        pca_model = PCA(n_components=n_comp, random_state=42)
+        X_scaled = pca_model.fit_transform(X_scaled)
+
+    n_images = len(feature_vectors)
+
+    # ── 2. Define Optuna objective ────────────────────────────────────────
+    def objective(trial):
+        params = _get_trial_params(trial, algorithm)
+        # Always keep n_clusters fixed at the user's chosen value.
+        # Optuna optimises other hyperparameters (init, linkage, covariance_type, etc.)
+        params.pop('n_clusters', None)
+        params.pop('n_components', None)
+
+        try:
+            model = get_clustering_model(algorithm, n_clusters)
+            remaining = {k: v for k, v in params.items() if k in model.get_params()}
+            model.set_params(**remaining)
+            if algorithm == 'GaussianMixture':
+                model.fit(X_scaled)
+                labels = model.predict(X_scaled)
+            else:
+                labels = model.fit_predict(X_scaled)
+            unique = set(labels)
+            n_found = len([lb for lb in unique if lb >= 0])
+            if n_found < 2:
+                return 0.0
+            mask = labels >= 0
+            if mask.sum() > n_found:
+                return float(sk_silhouette_score(X_scaled[mask], labels[mask]))
+        except Exception:
+            pass
+        return 0.0
+
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
+
+    return {
+        'best_score': float(study.best_value),
+        'best_params': study.best_params,
+        'n_trials': len(study.trials),
+        'n_test_samples': n_images,
+        'trials': [
+            {
+                'id': t.number + 1,
+                'score': float(t.value) if t.value is not None else 0.0,
+                'params': t.params,
+                'n_test_samples': n_images,
             }
             for t in study.trials if t.value is not None
         ],

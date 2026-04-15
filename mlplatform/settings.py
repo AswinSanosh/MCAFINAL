@@ -1,3 +1,8 @@
+# Allow login with username OR email
+AUTHENTICATION_BACKENDS = [
+    'users.backends.EmailOrUsernameModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 """
 Django settings for mlplatform project.
 
@@ -26,7 +31,10 @@ SECRET_KEY = 'django-insecure-^+ylw3r-6z(2#t0p_k#xwwp_v6jemphb!8s-ivga7et#g3mhrs
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition
@@ -41,6 +49,7 @@ INSTALLED_APPS = [
     # Third-party
     'rest_framework',
     'corsheaders',
+    'django_celery_results',
     # Local apps
     'users',
     'datasets',
@@ -66,6 +75,27 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+# Ensure CORS works for all methods
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
 
 # Django REST Framework settings (basic)
 REST_FRAMEWORK = {
@@ -73,10 +103,16 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'mlplatform.authentication.CsrfExemptSessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],
 }
+
+# CSRF settings for trusted origins
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
 
 ROOT_URLCONF = 'mlplatform.urls'
 
@@ -139,6 +175,19 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Session and cookie settings
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for session management
+SESSION_COOKIE_SECURE = False  # Set to True when using HTTPS in production
+SESSION_COOKIE_SAMESITE = 'Lax'  # Allows cookies to be sent on top-level navigations
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Session persists after browser close
+SESSION_COOKIE_AGE = 1209600  # 2 weeks (in seconds)
+SESSION_SAVE_EVERY_REQUEST = True  # Keep session alive on every request
+
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False  # Set to True when using HTTPS
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -147,6 +196,24 @@ STATIC_URL = 'static/'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# ---------------------------------------------------------------------------
+# Celery
+# ---------------------------------------------------------------------------
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = "django-db"          # stored in the Django DB via django-celery-results
+CELERY_CACHE_BACKEND = "default"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+# Keep task results for 24 h then auto-delete
+CELERY_RESULT_EXPIRES = 86400
+# Run up to 4 ML jobs in parallel per worker process
+CELERY_WORKER_CONCURRENCY = 4
+# Prevent a single large job from starving the queue
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

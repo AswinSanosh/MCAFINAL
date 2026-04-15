@@ -5,30 +5,37 @@ import { useState } from "react";
 import { useDataset } from "../../lib/hooks/useDataset";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import ProtectedRoute from "@/app/components/ProtectedRoute";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
 
 export default function DescribePage() {
-  const { datasetId, taskType, description, setDescription } = useDataset();
+  const { datasetId, taskType, description, setDescription, clearSession } = useDataset();
   const [isFocused, setIsFocused] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [staleError, setStaleError] = useState(false);
 
   const handleSubmit = async () => {
     setSaving(true);
     try {
       if (datasetId) {
-        await fetch(`${API_BASE}/describe/${datasetId}/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch(`${API_BASE}/describe/${datasetId}/`, { credentials: 'include', method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ description }),
         });
+        if (res.status === 404) {
+          // Dataset no longer exists in the backend (e.g. DB was reset)
+          clearSession();
+          setStaleError(true);
+          setSaving(false);
+          return;
+        }
       }
     } catch {
-      // non-critical â€” continue even if save fails
-    } finally {
-      setSaving(false);
-      window.location.href = '/analyze';
+      // network error — description is optional, continue anyway
     }
+    setSaving(false);
+    window.location.href = "/analyze";
   };
 
   const examples = [
@@ -38,8 +45,28 @@ export default function DescribePage() {
     "Detect fraudulent transactions in financial records",
   ];
 
+  if (staleError) {
+    return (
+      <main className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center text-red-400 p-8">
+          <p className="text-2xl font-bold mb-2">Session Expired</p>
+          <p className="text-gray-400 mb-6">
+            Your previous dataset no longer exists. Please upload a new one to continue.
+          </p>
+          <Link
+            href="/upload"
+            className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700"
+          >
+            Upload Dataset
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
+    <ProtectedRoute>
+      <main className="min-h-screen bg-linear-to-br from-gray-900 via-gray-900 to-gray-800 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -47,7 +74,7 @@ export default function DescribePage() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12 mt-8"
         >
-          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-linear-to-r from-indigo-400 to-purple-400 mb-4">
             Describe Your Dataset
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
@@ -67,14 +94,14 @@ export default function DescribePage() {
           className="bg-gray-800/50 rounded-2xl shadow-xl p-8 border border-gray-700 mb-8"
         >
           <div className="mb-8">
-            <label className="block text-lg font-medium text-white mb-4 flex items-center">
+            <label className="flex items-center text-lg font-medium text-white mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Goal Description
             </label>
             <div className={`relative rounded-xl border-2 transition-all duration-300 ${
-              isFocused ? 'border-indigo-500 bg-indigo-900/10' : 'border-gray-600 bg-gray-900/50 hover:border-gray-500'
+              isFocused ? "border-indigo-500 bg-indigo-900/10" : "border-gray-600 bg-gray-900/50 hover:border-gray-500"
             }`}>
               <textarea
                 value={description}
@@ -82,7 +109,7 @@ export default function DescribePage() {
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 placeholder="e.g., Predict customer churn based on purchase history, age, and demographics..."
-                className="w-full p-5 bg-transparent border-0 focus:ring-0 text-gray-200 placeholder-gray-500 resize-none min-h-[180px] outline-none"
+                className="w-full p-5 bg-transparent border-0 focus:ring-0 text-gray-200 placeholder-gray-500 resize-none min-h-45 outline-none"
               />
               <div className="absolute bottom-3 right-3 text-xs text-gray-500">{description.length}/500</div>
             </div>
@@ -122,9 +149,9 @@ export default function DescribePage() {
               whileTap={{ scale: 0.98 }}
               onClick={handleSubmit}
               disabled={saving}
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg flex items-center justify-center disabled:opacity-60"
+              className="flex-1 px-6 py-4 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg flex items-center justify-center disabled:opacity-60"
             >
-              {saving ? 'Saving...' : 'Analyse Dataset'}
+              {saving ? "Saving..." : "Analyse Dataset"}
               {!saving && (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -135,5 +162,6 @@ export default function DescribePage() {
         </motion.div>
       </div>
     </main>
+    </ProtectedRoute>
   );
 }
