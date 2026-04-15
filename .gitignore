@@ -1,0 +1,35 @@
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore virtual environments
+venv/
+.env/
+
+# Ignore Django migrations
+**/migrations/*
+!**/migrations/__init__.py
+
+# Ignore SQLite database
+*.sqlite3
+
+# Ignore media uploads
+media/datasets/
+media/models/
+media/image_results/
+# Ignore large image zips
+media/image_zips/
+
+# Ignore frontend build
+frontend/.next/
+frontend/node_modules/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
